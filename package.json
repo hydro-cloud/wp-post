@@ -1,0 +1,20 @@
+{
+  "name": "wp-post",
+  "version": "0.0.1",
+  "description": "for wordpress posting.",
+  "main": "dist/index.js",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^3.3.4000"
+  },
+  "dependencies": {
+    "ts-node": "^10.9.1"
+  }
+}
