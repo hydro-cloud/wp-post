@@ -6,6 +6,7 @@ import axios from "axios";
 import matter from "gray-matter";
 import * as cheerio from "cheerio";
 import probe from "probe-image-size";
+import * as prettier from "prettier";
 
 import { EventEmitter } from "events";
 
@@ -17,27 +18,58 @@ import MarkdownIt from "markdown-it";
 export const REG_WWWIMG = new RegExp("^(http|https):.+");
 
 export interface WPPostOption {
-  apiUrl: string;
+  useLineNumbers: boolean;
+  useLinkCard: boolean;
+}
+
+export interface CodeOption {
+  useLineNumbers: boolean;
+}
+
+export interface LinkCardOption {
+  useLinkCard: boolean;
+}
+
+export interface WPCheckResult {
+  path: string;
+  file: string;
+  exists: boolean;
 }
 
 export class Markdown {
   /** */
-  private md: MarkdownIt;
+  protected md: MarkdownIt;
 
   /** */
   protected headerData: { [key: string]: any } = {};
   /** */
 
-  private content: string = "";
+  protected content: string = "";
+
+  public parentDir: string;
+
+  public useLineNumbers: boolean = true;
+  public useLinkCard: boolean = true;
 
   /**
    *
    */
-  constructor(public docPath: string) {
+  constructor(public docPath: string, options?: WPPostOption) {
     //
-    this.md = Markdown.Setup();
+    if (options != null) {
+      if (options.useLineNumbers != null)
+        this.useLineNumbers = options.useLineNumbers;
+      if (options.useLinkCard != null) this.useLinkCard = options.useLinkCard;
+      //
+      console.log("useLinkCard", this.useLinkCard);
+      console.log("useLineNumbers", this.useLineNumbers);
+    }
+    //
+    this.md = this.setup();
     //
     this.load(docPath);
+
+    this.parentDir = path.dirname(docPath);
   }
 
   //
@@ -65,7 +97,7 @@ export class Markdown {
     //
   }
 
-  private static Setup(): MarkdownIt {
+  protected setup(): MarkdownIt {
     //
     const md = MarkdownIt({
       html: true, // 文中のコメントアウトにも必要
@@ -87,12 +119,28 @@ export class Markdown {
           var m = tokens[idx].info.trim().match(/^detail\s+(.*)$/);
 
           if (tokens[idx].nesting === 1) {
-            // <details open> で初期がOpen
-            return (
-              "<details ><summary>" + md.utils.escapeHtml(m[1]) + "</summary>\n"
-            );
+            return `<details ><summary>${md.utils.escapeHtml(
+              m[1]
+            )}</summary>\n`;
           } else {
             return "</details>\n";
+          }
+        },
+      })
+      .use(require("markdown-it-container"), "detail-open", {
+        validate: function (params: any) {
+          return params.trim().match(/^detail-open\s+(.*)$/);
+        },
+
+        render: function (tokens: any, idx: any) {
+          var m = tokens[idx].info.trim().match(/^detail-open\s+(.*)$/);
+
+          if (tokens[idx].nesting === 1) {
+            return `<details open="true"><summary>${md.utils.escapeHtml(
+              m[1]
+            )}</summary>\n`;
+          } else {
+            return `</details>\n`;
           }
         },
       })
@@ -149,7 +197,7 @@ export class Markdown {
               m[1]
             )}</span></div><div class="label-box-content block-box-content box-content">`;
           } else {
-            return "</div>\n";
+            return "</div></div>\n";
           }
         },
       })
@@ -187,15 +235,174 @@ export class Markdown {
           }
         },
       });
-    // WP Mermaidに対応しない
+    // 以下ではWP Mermaidに対応しない
     //  .use(require('markdown-it-textual-uml'))
     //  .use(require('markdown-it-mermaid'));
 
     return md;
   }
 
-  public render(): string {
-    return this.md.render(this.content);
+  public use(plugin: MarkdownIt.PluginWithParams, ...params: any[]): Markdown {
+    this.md.use(plugin, params);
+    return this;
+  }
+
+  public async render(): Promise<string> {
+    const content = this.md.render(this.content);
+
+    const ch = cheerio.load(content);
+    //
+    await Markdown.code(ch, {
+      useLineNumbers: this.useLineNumbers,
+    });
+
+    //
+    await Markdown.linkCard(ch, {
+      useLinkCard: this.useLinkCard,
+    });
+
+    return ch.html(ch("body > *"), {
+      decodeEntities: false,
+    });
+  }
+
+  public static code(
+    ch: cheerio.CheerioAPI,
+    options: CodeOption = {
+      useLineNumbers: false,
+    }
+  ) {
+    //
+    const codes = ch("code");
+    for (let i = 0; i < codes.length; i++) {
+      //
+      let className = ch(codes[i]).attr("class");
+      let text = ch(codes[i]).text();
+      let parent = ch(codes[i]).parent();
+      let parent_tagName = parent.get(0)?.tagName.toLowerCase();
+      //
+      // if (className == null) continue;
+      if (className == null) className = "";
+      //
+      let languages = className
+        .replace("language-", "")
+        .replace("diff-", "")
+        .replace("diff_", "")
+        .trim()
+        .split(":");
+      //
+      let language = languages.length >= 1 ? languages[0] : null;
+      let filePath = languages.length >= 2 ? languages[1] : null;
+
+      if (parent_tagName === "pre") {
+        // prism
+        if (!!language) ch(parent).attr("data-label", filePath);
+        //
+        if (!!language) ch(parent).attr("data-lang", language);
+        if (!!filePath) ch(parent).attr("data-file", filePath);
+      }
+
+      if (className.startsWith("language-mermaid")) {
+        // WP mermaid
+        className = "mermaid";
+      } else if (className.startsWith("language-diff")) {
+        // diff
+        className = "language-diff";
+        className += " diff-highlight";
+        // linenumbers
+        if (options.useLineNumbers) className += " line-numbers";
+        // } else if (!!language) {
+        //   className = `language-${language}`;
+        //   // linenumbers
+        //   if (true) className += " line-numbers";
+        // }
+      } else {
+        className = `language-${language}`;
+        // linenumbers
+        if (options.useLineNumbers) className += " line-numbers";
+      }
+
+      //
+      ch(codes[i]).replaceWith(
+        `<code class="${className}">${MarkdownIt().utils.escapeHtml(
+          text
+        )}</code>`
+      );
+    }
+  }
+
+  public static async linkCard(
+    ch: cheerio.CheerioAPI,
+    options: LinkCardOption = {
+      useLinkCard: false,
+    }
+  ) {
+    //
+    if (!options.useLinkCard) return;
+    //
+    const as = ch("a");
+    for (let i = 0; i < as.length; i++) {
+      //
+      let url = ch(as[i]).attr("href");
+      if (url == null) continue;
+
+      let element = ch(as[i]).get(0);
+      let parentNode = ch(as[i]).parent().get(0);
+
+      //
+      if (!element) continue;
+      if (!parentNode) continue;
+
+      if (parentNode.tagName.toLowerCase() != "p") continue;
+      if (parentNode.childNodes.length != 1) continue;
+      if (element.nextSibling != null) continue;
+      if (element.previousSibling != null) continue;
+
+      const res = await axios({
+        url: url,
+        method: `GET`,
+      });
+
+      const ch2 = cheerio.load(res.data);
+      const image = ch2("meta[property='og:image']").attr("content");
+      const description = ch2("meta[property='og:description']").attr(
+        "content"
+      );
+      const title = ch2("meta[property='og:title']").attr("content");
+
+      const domain = new URL(url).origin;
+
+      let template = `<a href="${url}" title="${title}" class="blogcard-wrap internal-blogcard-wrap a-wrap cf">
+       <div class="blogcard internal-blogcard ib-left cf">
+         <div class="blogcard-label internal-blogcard-label">
+           <span class="fa"></span>
+         </div>
+         <figure class="blogcard-thumbnail internal-blogcard-thumbnail">
+           <img src="${image}" alt="" class=" internal-blogcard-thumb-image" width="160" height="90" loading="lazy" decoding="async" />
+         </figure>
+         <div class="blogcard-content internal-blogcard-content">
+           <div class="blogcard-title internal-blogcard-title">
+           ${title}
+           </div>
+           <div class="blogcard-snippet internal-blogcard-snippet">
+           ${description}
+           </div>
+         </div>
+         <div class="blogcard-footer internal-blogcard-footer cf">
+           <div class="blogcard-site internal-blogcard-site">
+             <div class="blogcard-favicon internal-blogcard-favicon">
+               <img src="https://www.google.com/s2/favicons?domain=${url}" alt="" class="blogcard-favicon-image internal-blogcard-favicon-image" width="16" height="16" loading="lazy" decoding="async" />
+             </div>
+             <div class="blogcard-domain internal-blogcard-domain">
+             ${domain}
+             </div>
+           </div>
+         </div>
+       </div>
+     </a>`;
+      //
+      ch(as[i]).replaceWith(template);
+    }
   }
 }
 
@@ -258,9 +465,10 @@ export default class WPPost extends Markdown {
   /** */
   public useLinkableImage: boolean = false;
 
-  constructor(public override docPath: string) {
+  constructor(public override docPath: string, options?: WPPostOption) {
     //
-    super(docPath);
+    super(docPath, options);
+
     //
     const docParsedPath = path.parse(docPath);
     //
@@ -286,7 +494,7 @@ export default class WPPost extends Markdown {
     //
     this.events.emit("start", {});
 
-    // postDataを解析し、llug 対象を ID にする
+    // postDataを解析し、slug 対象を ID にする
     for (const key in this.postData) {
       if (this.slugKeys.indexOf(key) > -1) {
         const slugs: string[] = this.postData[key];
@@ -302,7 +510,7 @@ export default class WPPost extends Markdown {
     this.events.emit("parsed", this.postData);
 
     // mdの content 部分を markdown-it でレンダリング
-    const content: string = this.render();
+    let content: string = await this.render();
 
     //
     this.events.emit("rendered", { content: content });
@@ -310,15 +518,25 @@ export default class WPPost extends Markdown {
     // ノード解析
     const ch = cheerio.load(content);
 
-    //
+    // img 処理
     await this.uploadAndSizing(this.postData, ch, docParsedPath);
-    await WPPost.code(ch);
-    await WPPost.linkCard(ch);
 
     // restore html
-    this.postData["content"] = ch.html(ch("body > *"), {
-      decodeEntities: false,
+    //  content = ch.html(ch("body > *"), {
+    //   decodeEntities: false,
+    // });
+
+    // 最終出力内容フォーマット
+    // rootエレメントが必要なため単純にhtml()で展開(html->head,body が含まれる)
+    content = prettier.format(ch.html(), {
+      parser: "html",
     });
+
+    // body
+    content = cheerio.load(content)("body").html() || "";
+
+    //
+    this.postData["content"] = content;
 
     //
     this.events.emit("converted", { content: this.postData["content"] });
@@ -692,7 +910,7 @@ export default class WPPost extends Markdown {
    * Create relative Url
    */
   private replaceAttachedImageUrl(imgSrc: string): string {
-    const siteUrl: string = this.siteUrl;
+    const siteUrl: string = this.siteUrl.replace(/\/$/, ""); // remove trailing slash if exist
     return imgSrc.replace(siteUrl, "");
   }
 
@@ -711,6 +929,72 @@ export default class WPPost extends Markdown {
     return imageSlug + sep + size;
   }
   */
+
+  public getLinks(): WPCheckResult[] {
+    //
+    const docParsedPath = path.parse(this.docPath);
+    //
+    const content: string = this.content;
+
+    const localFeaturedImage = this.findLocalFeaturedImage(docParsedPath);
+
+    //
+    const images: string[] = [];
+    if (localFeaturedImage) images.push(localFeaturedImage);
+
+    //
+    const ch = cheerio.load(content);
+    for (const c of ch("img")) {
+      const srcAttr = ch(c).attr("src");
+      if (!srcAttr) continue;
+      if (srcAttr.match(REG_WWWIMG)) continue;
+      //
+      const attachedImgPath = path.join(docParsedPath.dir, srcAttr);
+      images.push(attachedImgPath);
+    }
+
+    //
+    const files: WPCheckResult[] = [];
+    for (const image of images) {
+      files.push({
+        path: image,
+        file: image.replace(`${this.parentDir}\\`, ""),
+        exists: fs.existsSync(image),
+      } as WPCheckResult);
+    }
+
+    return files;
+  }
+
+  public getFileReferences(
+    targets: string[] = [".png", ".jpg", ".gif"]
+  ): WPCheckResult[] {
+    // closer的に、指定フォルダ配下にある画像情報を取得する関数定義
+    const listFiles = (dir: string): string[] =>
+      fs
+        .readdirSync(dir, { withFileTypes: true })
+        .flatMap((dirent) =>
+          dirent.isFile()
+            ? [path.join(dir, dirent.name)]
+            : listFiles(path.join(dir, dirent.name))
+        );
+    // markdown で使用されている img とそのファイル情報を取得
+    const files1: WPCheckResult[] = this.getLinks();
+    //
+    const files2: WPCheckResult[] = [];
+    // .md が存在するカレントディレクトリ内の画像（特定の拡張子を指定）を展開
+    for (const f of listFiles(this.parentDir).filter((a) =>
+      targets.includes(path.extname(a))
+    )) {
+      files2.push({
+        path: f,
+        file: f.replace(`${this.parentDir}\\`, ""),
+        exists: files1.filter((a) => a.path == f).length > 0, // Markdown中で使用されているかの有無
+      } as WPCheckResult);
+    }
+
+    return files2;
+  }
 
   /* ---------- static ----------*/
 
@@ -764,127 +1048,6 @@ export default class WPPost extends Markdown {
       return [maxWidth, Math.trunc((imgHeight * maxWidth) / imgWidth)];
     } else {
       return [Math.trunc((imgWidth * maxHeight) / imgHeight), maxHeight];
-    }
-  }
-
-  public static code(ch: cheerio.CheerioAPI) {
-    //
-    const codes = ch("code");
-    for (let i = 0; i < codes.length; i++) {
-      //
-      let className = ch(codes[i]).attr("class");
-      let text = ch(codes[i]).text();
-      let parent = ch(codes[i]).parent();
-      let parent_tagName = parent.get(0)?.tagName.toLowerCase();
-      //
-      if (className == null) continue;
-      //
-      let languages = className
-        .replace("language-", "")
-        .replace("diff-", "")
-        .replace("diff_", "")
-        .trim()
-        .split(":");
-      //
-      let language = languages.length >= 1 ? languages[0] : null;
-      let filePath = languages.length >= 2 ? languages[1] : null;
-
-      if (parent_tagName === "pre") {
-        // prism
-        if (!!language) ch(parent).attr("data-label", filePath);
-        //
-        if (!!language) ch(parent).attr("data-lang", language);
-        if (!!filePath) ch(parent).attr("data-file", filePath);
-      }
-
-      if (className.startsWith("language-mermaid")) {
-        // WP mermaid
-        className = "mermaid";
-      } else if (className.startsWith("language-diff")) {
-        // diff
-        className = "language-diff";
-        className += " diff-highlight";
-        // linenumbers
-        if (true) className += " line-numbers";
-      } else if (!!language) {
-        className = `language-${language}`;
-        // linenumbers
-        if (true) className += " line-numbers";
-      }
-
-      //
-      ch(codes[i]).replaceWith(
-        `<code class="${className}">${MarkdownIt().utils.escapeHtml(
-          text
-        )}</code>`
-      );
-    }
-  }
-
-  public static async linkCard(ch: cheerio.CheerioAPI) {
-    //
-    const as = ch("a");
-    for (let i = 0; i < as.length; i++) {
-      //
-      let url = ch(as[i]).attr("href");
-      if (url == null) continue;
-
-      let element = ch(as[i]).get(0);
-      let parentNode = ch(as[i]).parent().get(0);
-
-      //
-      if (!element) continue;
-      if (!parentNode) continue;
-
-      if (parentNode.tagName.toLowerCase() != "p") continue;
-      if (parentNode.childNodes.length != 1) continue;
-      if (element.nextSibling != null) continue;
-      if (element.previousSibling != null) continue;
-
-      const res = await axios({
-        url: url,
-        method: `GET`,
-      });
-
-      const ch2 = cheerio.load(res.data);
-      const image = ch2("meta[property='og:image']").attr("content");
-      const description = ch2("meta[property='og:description']").attr(
-        "content"
-      );
-      const title = ch2("meta[property='og:title']").attr("content");
-
-      const domain = new URL(url).origin;
-
-      let template = `<a href="${url}" title="${title}" class="blogcard-wrap internal-blogcard-wrap a-wrap cf">
-         <div class="blogcard internal-blogcard ib-left cf">
-           <div class="blogcard-label internal-blogcard-label">
-             <span class="fa"></span>
-           </div>
-           <figure class="blogcard-thumbnail internal-blogcard-thumbnail">
-             <img src="${image}" alt="" class=" internal-blogcard-thumb-image" width="160" height="90" loading="lazy" decoding="async" />
-           </figure>
-           <div class="blogcard-content internal-blogcard-content">
-             <div class="blogcard-title internal-blogcard-title">
-             ${title}
-             </div>
-             <div class="blogcard-snippet internal-blogcard-snippet">
-             ${description}
-             </div>
-           </div>
-           <div class="blogcard-footer internal-blogcard-footer cf">
-             <div class="blogcard-site internal-blogcard-site">
-               <div class="blogcard-favicon internal-blogcard-favicon">
-                 <img src="https://www.google.com/s2/favicons?domain=${url}" alt="" class="blogcard-favicon-image internal-blogcard-favicon-image" width="16" height="16" loading="lazy" decoding="async" />
-               </div>
-               <div class="blogcard-domain internal-blogcard-domain">
-               ${domain}
-               </div>
-             </div>
-           </div>
-         </div>
-       </a>`;
-      //
-      ch(as[i]).replaceWith(template);
     }
   }
 }
