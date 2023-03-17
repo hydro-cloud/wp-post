@@ -26,4 +26,4 @@ export const getFileReferences = (docPath: string): WPCheckResult[] => {
 };
 
 //
-export * as WPPost from "./WPPost";
+export default WPPost;
