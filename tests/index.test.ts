@@ -1,6 +1,6 @@
 import * as path from "path";
 
-import { wppost,  getLinks,  getFileReferences } from "../src";
+import { wppostAync,  getLinks,  getFileReferences } from "../src";
 
 const config = require("./config.json");
 
@@ -14,7 +14,7 @@ test("wppost", async () => {
   const authPassword = config.authPassword;
 
   //
-  const postId = await wppost(docPath, apiUrl, authUser, authPassword);
+  const postId = await wppostAync(docPath, apiUrl, authUser, authPassword);
   //
   expect(postId).not.toBeNull();
 }, 30000);

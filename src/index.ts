@@ -1,17 +1,17 @@
 //
-import WPPost, { WPPostOption ,WPCheckResult} from "./WPPost";
+import WPPost, { MarkdownOption ,WPCheckResult} from "./WPPost";
 
-export const wppost = async (
+export const wppostAync = async (
   docPath: string,
   apiUrl: string,
   authUser: string,
   authPassword: string,
-  options?: WPPostOption
+  options?: MarkdownOption
 ): Promise<string> => {
   const wpost = new WPPost(docPath,options);
  
   //
-  const postId = await wpost.post(apiUrl, authUser, authPassword);
+  const postId = await wpost.postAsync(apiUrl, authUser, authPassword);
   return postId;
 };
 

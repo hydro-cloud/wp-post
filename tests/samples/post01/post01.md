@@ -3,6 +3,20 @@ title: 記事のタイトル!!!!!
 status: draft
 ---
 
+
+::: detail  
+*here be dragons*
+:::
+
+::: detail-open  
+*here be dragons*
+:::
+
+
+::: note 
+Primary
+:::
+
 <p>test1</p>
 
 # testHoge

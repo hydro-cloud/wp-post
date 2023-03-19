@@ -1,31 +1,14 @@
 const fs = require("fs");
 const { program } = require("commander");
 const inquirer = require("inquirer");
-const path = require("path");
-const os = require("os");
 
-import { wppost } from "../index";
+import { wppostAync } from "../index";
 
-import WPPost, { WPPostOption } from "../WPPost";
+
+// import WPPost, { WPPostOption,Config } from "../WPPost";
+import WPPost, { MarkdownOption,Config } from "../WPPost";
 //
-const projectDirName = ".wppost";
-
-let saveDir;
-if (os.platform() === "win32") {
-  // Windowsの場合は%AppData%ディレクトリに保存
-  saveDir = path.join(process.env["APPDATA"], projectDirName);
-} else {
-  // Unixベースのシステムの場合はホームディレクトリ以下に保存
-  saveDir = path.join(os.homedir(), projectDirName);
-}
-
-// ディレクトリが存在しない場合は作成
-if (!fs.existsSync(saveDir)) {
-  fs.mkdirSync(saveDir);
-}
-
-// ファイルの保存先
-const savePath = path.join(saveDir, "config.json");
+const config = new Config();
 
 program
   .version(require("../../package.json").version)
@@ -63,24 +46,22 @@ program
       let api = params.api;
       let user = params.user;
       let password = params.password;
-      let options: WPPostOption = params.options
+      let options: MarkdownOption = params.options
         ? JSON.parse(params.options)
         : null;
       //
       const useParam =
         params.api != null || params.user != null || params.password != null;
       if (!useParam) {
-        const config = await readConfig();
-        if (config != null) {
+        await config.readConfig();
           //
           api = config.apiUrl;
           user = config.authUser;
           password = config.authPassword;
           if (options != null) options = config.options;
-        }
       }
 
-      const postId = await wppost(filePath, api, user, password, options);
+      const postId = await wppostAync(filePath, api, user, password, options);
       //
       console.log("complete:😀 ", postId);
     } catch (_err) {
@@ -94,9 +75,9 @@ program
   .action(async (options: any) => {
     if (options.show) {
       // Show the current configuration
-      const config = await readConfig();
+      await config.readConfig();
       if (config) {
-        console.log(`Config file path: ${savePath}`);
+        console.log(`Config file path: ${config.getSavePath()}`);
         console.log("apiUrl:", config.apiUrl);
         console.log("authUser:", config.authUser);
         console.log("authPassword:", config.authPassword);
@@ -113,35 +94,33 @@ program
         },
       ]);
       if (confirm.confirm) {
-        await deleteConfig();
+        await config.deleteConfig();
         console.log("Configuration deleted.");
       } else {
         console.log("Configuration not deleted.");
       }
     } else {
       // Prompt the user for input
-      let previousConfig = await readConfig();
+      await config.readConfig();
       //
-      if (!previousConfig) previousConfig = {};
-
       const answers = await inquirer.prompt([
         {
           type: "input",
           name: "apiUrl",
           message: "What is your apiUrl?",
-          default: previousConfig.apiUrl || "",
+          default: config.apiUrl ,
         },
         {
           type: "input",
           name: "authUser",
           message: "What is your authUser ?",
-          default: previousConfig.authUser || "",
+          default: config.authUser ,
         },
         {
           type: "input",
           name: "authPassword",
           message: "What is your authPassword ?",
-          default: previousConfig.authPassword || "",
+          default: config.authPassword 
         },
       ]);
 
@@ -164,40 +143,17 @@ program
         // console.log(`authPassword: ${"*".repeat(answers.authPassword.length)}`);
 
         // Save the configuration to a file
-        await writeConfig(answers);
-        console.log(`Configuration saved to ${savePath}`);
+        config.apiUrl=answers.apiUrl;
+        config.authUser=answers.authUser;
+        config.authPassword=answers.authPassword;
+        await config.writeConfig();
+        console.log(`Configuration saved to ${confirmation.getSavePath()}`);
       } else {
         console.log("Configuration not saved.");
       }
     }
   });
 
-async function readConfig() {
-  try {
-    const data = await fs.promises.readFile(savePath);
-    return JSON.parse(data);
-  } catch (error) {
-    console.log("Configuration is not exists.");
-    return null;
-  }
-}
-
-async function writeConfig(config: any) {
-  try {
-    const data = JSON.stringify(config);
-    await fs.promises.writeFile(savePath, data);
-  } catch (error) {
-    console.error("Error writing configuration:", error);
-  }
-}
-
-async function deleteConfig() {
-  try {
-    await fs.promises.writeFile(savePath, "");
-  } catch (error) {
-    console.error("Error deleting configuration:", error);
-  }
-}
 
 export const check = async (docPath: string): Promise<string> => {
   //
