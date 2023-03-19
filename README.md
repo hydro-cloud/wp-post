@@ -153,6 +153,7 @@ Here are the embedded keys and values ​​provided by each template.
   |  key  |  value  |
   | ---- | ---- |
   |  *label*  |  summary' value  |
+  
   default
   ```js
    public tplDetail: Template = new Template(
@@ -165,6 +166,7 @@ Here are the embedded keys and values ​​provided by each template.
   |  key  |  value  |
   | ---- | ---- |
   |  *label*  |  summary' value  |
+  
   default
   ```js
     public tplDetailOpen: Template = new Template(
@@ -176,6 +178,7 @@ Here are the embedded keys and values ​​provided by each template.
   |  key  |  value  |
   | ---- | ---- |
   |  *type*  |   type: `primary` `info` `alert`  <br /> *wordpress cocoon'setting.*|
+  
   default
   ```js
     public tplNote: Template = new Template(
@@ -187,6 +190,7 @@ Here are the embedded keys and values ​​provided by each template.
   |  key  |  value  |
   | ---- | ---- |
   |  *type*  |   type: `st-red` `st-blue` `st-yellow` `st-green`  <br /> *wordpress cocoon'setting.*|
+  
   default
   ```js
     public tplSticky: Template = new Template(
@@ -198,6 +202,7 @@ Here are the embedded keys and values ​​provided by each template.
   |  key  |  value  |
   | ---- | ---- |
   |  *title*  |   title string |
+  
   default
   ```js
     public tplLabel: Template = new Template(
@@ -211,6 +216,7 @@ Here are the embedded keys and values ​​provided by each template.
   |  *name*  |   Name displayed under Avatar |
   |  *image*  |   Avatar image<br/>Specify a file location that the img tag can access |
   |  *position*  |   `sbp-r`<br />If you specify "opposite": true and display it on the right side, the string `sbp-r` will be entered. This string is from wordpress cocoon style. It will be possible to change these strings in the next and subsequent versions. |
+  
   default
   ```js
     public tplSpeech: Template = new Template(
@@ -233,6 +239,7 @@ Here are the embedded keys and values ​​provided by each template.
   |  *image*  |   og image |
   |  *description*  |   og description |
   |  *domain*  |   domain from url |
+  
   default
   ```js
   public tplLinkCard: Template = new Template(
