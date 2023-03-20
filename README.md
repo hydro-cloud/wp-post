@@ -6,7 +6,7 @@ You can run a script or command to post your markdown files to wordpress.
 
 In addition, we have prepared a function to detect broken links of image files in Markdown and images not used in Markdown in the folder where Markdown is placed.
 
-
+>I'm sorry, but when I updated to version 1.0.0, I refactored the method name. Mainly, we received information that there was confusion during implementation because there was no "Async" suffix even though it was an "asynchronous method", so we fixed it. If you are using an earlier version, updating may cause compilation errors.
 
 # Installing
 ## Package manager
@@ -53,10 +53,10 @@ post01
 >Similarly, if "slug" is not specified, the file name will be slug.
 
 
-### wppost
+### wppostAync
 Convert the markdown file to HTML and post it to WordPress.
 ```js
-import { wppost } from "wp-post";
+import { wppostAync } from "wp-post";
 
 const docPath = "./post01/post01.md";
 const apiUrl = config.apiUrl; // e.g https://example.com/wp-json/wp/v2
@@ -64,31 +64,34 @@ const authUser = config.authUser;// e.g userName,mail
 const authPassword = config.authPassword;// e.g "xxxs xxxs xxxs xxxs xxxs xxxx"
 
 //
-const postId = await wppost(docPath, apiUrl, authUser, authPassword);
+const postId = await wppostAync(docPath, apiUrl, authUser, authPassword);
 console.log(postId): // post id
 ```
 
-### getLinks , getFileReferences
-`getLinks` detects the link status of images in the markdown, 
-`getFileReferences` detects the link status of image files in the folder where the markdown is located.
+### getLinksAsync , getFileReferencesAsync
+`getLinksAsync` detects the link status of images in the markdown, 
+`getFileReferencesAsync` detects the link status of image files in the folder where the markdown is located.
 ```js
-import { getLinks, getFileReferences } from "wp-post";
+import { getLinksAsync, getFileReferencesAsync } from "wp-post";
 
 const docPath = "./post01/post01.md";
-const results1 = getLinks(docPath);
+const results1 = await getLinksAsync(docPath);
 console.log(results1): //  images that cannot be referenced in markdown.
 
-const results2 = getFileReferences(docPath);
+const results2 = await getFileReferencesAsync(docPath);
 console.log(results2): // A list of the referencing status of files.
 ```
->`getFileReferences`
+>`getFileReferencesAsync`
 The default file extensions to be targeted are ".png", ".jpg", and ".gif". They can be specified as a string array in the first argument, for example, [" .png", ".jpg", ".gif"].
 
 
 ### class files
 The above process is defined in the following class: `WPPost` . It can also be used.
 #### WPPost
+
+When using `wppostAync()` 
 ```js
+import WPPost from "wp-post";
 const wpost = new WPPost(docPath);
 
 //
@@ -99,14 +102,263 @@ const apiUrl = config.apiUrl;
 const authUser = config.authUser;
 const authPassword = config.authPassword;
 //
-const postId = await wpost.post(apiUrl, authUser, authPassword);
+const postId = await wpost.postAsync(apiUrl, authUser, authPassword);
 ```
 
-```js
-const checker = new WPPost(docPath);
+When using `getLinksAsync()` or `getFileReferencesAsync()`  .
 
-const results1 = checker.getFileReferences();
-const results2 = checker.getLinks();
+```js
+const wpost = new WPPost(docPath);
+
+const results1 = await wpost.getLinksAsync();
+const results2 = await wpost.getFileReferencesAsync();
+```
+##### Advanced usage
+* change template
+Below we introduce the conversion of Markdown statements such as ```(code) and :::(container). Some of them can be customized in this version.
+
+Here's an example using the `detail` template.
+Placeholders are described with {{}}.
+
+In the case of detail, the *label* value is embedded, so write {{label}} in the target location.
+
+```js
+const wpost = new WPPost(docPath);
+wpost.template.tplDetail= new Template(`<details><summary>!!{{label}}!!aaa</summary>`,`</details>`);
+```
+>Specify the first argument of the Template class as the opening tag and the second argument as the closing tag.
+
+
+
+Or you can override the tag generation logic itself to do your own thing.
+Here is a sample combined with the previous template. See this specification here [markdown-it-container](https://www.npmjs.com/package/markdown-it-container).
+```js
+  const wpost = new WPPost(docPath);
+
+  wpost.template.detail= (
+    tokens: any, idx: any
+  ) :string=>{
+
+    var m = tokens[idx].info.trim().match(/^detail\s+(.*)$/);
+
+    let label = "";
+    if (Array.isArray(m) && m.length >= 2)
+      label = MarkdownIt().utils.escapeHtml(m[1]);
+
+    if (tokens[idx].nesting === 1) {
+      return wpost.template.tplDetail.renderStart({ label: label });
+    } else {
+      return wpost.template.tplDetail.renderEnd();
+    }
+
+  }
+```
+
+
+Here are the embedded keys and values ​​provided by each template.
+* detail
+  |  key  |  value  |
+  | ---- | ---- |
+  |  *label*  |  summary' value  |
+  
+  default
+  ```js
+   public tplDetail: Template = new Template(
+    `<details ><summary>{{label}}</summary>`,
+    `</details>`
+  );
+  ```
+
+* detailOpen
+  |  key  |  value  |
+  | ---- | ---- |
+  |  *label*  |  summary' value  |
+  
+  default
+  ```js
+    public tplDetailOpen: Template = new Template(
+    `<details  open="true"><summary>{{label}}</summary>`,
+    `</details>`
+  );
+  ```
+* note
+  |  key  |  value  |
+  | ---- | ---- |
+  |  *type*  |   type: `primary` `info` `alert`  <br /> *wordpress cocoon'setting.*|
+  
+  default
+  ```js
+    public tplNote: Template = new Template(
+    `<div class="note {{type}}"><div class="note-body">`,
+    `</div></div>`
+  );
+  ```
+* sticky
+  |  key  |  value  |
+  | ---- | ---- |
+  |  *type*  |   type: `st-red` `st-blue` `st-yellow` `st-green`  <br /> *wordpress cocoon'setting.*|
+  
+  default
+  ```js
+    public tplSticky: Template = new Template(
+    `<div class="wp-block-cocoon-blocks-sticky-box blank-box block-box sticky {{type}}">`,
+    `</div>`
+  );
+  ```
+* label
+  |  key  |  value  |
+  | ---- | ---- |
+  |  *title*  |   title string |
+  
+  default
+  ```js
+    public tplLabel: Template = new Template(
+    `<div class="wp-block-cocoon-blocks-label-box-1 label-box block-box"><div class="label-box-label block-box-label box-label"><span class="label-box-label-text block-box-label-text box-label-text">{{title}}</span></div><div class="label-box-content block-box-content box-content">`,
+    `</div></div>`
+  );
+  ```
+* speech
+  |  key  |  value  |
+  | ---- | ---- |
+  |  *name*  |   Name displayed under Avatar |
+  |  *image*  |   Avatar image<br/>Specify a file location that the img tag can access |
+  |  *position*  |   `sbp-r`<br />If you specify "opposite": true and display it on the right side, the string `sbp-r` will be entered. This string is from wordpress cocoon style. It will be possible to change these strings in the next and subsequent versions. |
+  
+  default
+  ```js
+    public tplSpeech: Template = new Template(
+    `<div class="wp-block-cocoon-blocks-balloon-ex-box-1 speech-wrap sb-id-1 sbs-stn {{position}} sbis-cb cf block-box">
+        <div class="speech-person">
+        <figure class="speech-icon">
+        <img src="{{image}}" alt="{{name}}" class="speech-icon-image"/>
+        </figure>
+        <div class="speech-name">{{name}}</div>
+        </div>
+        <div class="speech-balloon">`,
+    `</div></div>`
+  );
+  ```
+* linkCard
+  |  key  |  value  |
+  | ---- | ---- |
+  |  *url*  |   link href value |
+  |  *title*  |   og title |
+  |  *image*  |   og image |
+  |  *description*  |   og description |
+  |  *domain*  |   domain from url |
+  
+  default
+  ```js
+  public tplLinkCard: Template = new Template(
+      `<a href="{{url}}" title="{{title}}" class="blogcard-wrap internal-blogcard-wrap a-wrap cf">
+            <div class="blogcard internal-blogcard ib-left cf">
+              <div class="blogcard-label internal-blogcard-label">
+                <span class="fa"></span>
+              </div>
+              <figure class="blogcard-thumbnail internal-blogcard-thumbnail">
+                <img src="{{image}}" alt="" class=" internal-blogcard-thumb-image" width="160" height="90" loading="lazy" decoding="async" />
+              </figure>
+              <div class="blogcard-content internal-blogcard-content">
+                <div class="blogcard-title internal-blogcard-title">
+                {{title}}
+                </div>
+                <div class="blogcard-snippet internal-blogcard-snippet">
+                {{description}}
+                </div>
+              </div>
+              <div class="blogcard-footer internal-blogcard-footer cf">
+                <div class="blogcard-site internal-blogcard-site">
+                  <div class="blogcard-favicon internal-blogcard-favicon">
+                    <img src="https://www.google.com/s2/favicons?domain={{url}}" alt="" class="blogcard-favicon-image internal-blogcard-favicon-image" width="16" height="16" loading="lazy" decoding="async" />
+                  </div>
+                  <div class="blogcard-domain internal-blogcard-domain">
+                  {{domain}}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </a>`
+    );
+    ```
+
+
+* code
+  The code specifies the conversion process itself as a function.
+
+
+  This is simply a way to specify a fixed string.
+  You can freely convert code tags (and their parent pre tags) to refer to the default implementation.
+  ```js
+    wpost.template.code =  (
+      _ch: cheerio.CheerioAPI,
+      _code: cheerio.Element,
+      _useLineNumbers: boolean
+    ): string => {
+      // 
+      return `<code>abcde</code>`;
+    };
+  ```
+
+  default
+    ```js
+    this.code = (
+        ch: cheerio.CheerioAPI,
+        code: cheerio.Element,
+        useLineNumbers: boolean
+      ): string => {
+        // 
+        let className = ch(code).attr("class");
+        let text = ch(code).text();
+        let parent = ch(code).parent();
+        let parent_tagName = parent.get(0)?.tagName.toLowerCase();
+        //
+        if (className == null) className = "";
+        //
+        let languages = className
+          .replace("language-", "")
+          .replace("diff-", "")
+          .replace("diff_", "")
+          .trim()
+          .split(":");
+        //
+        let language = languages.length >= 1 ? languages[0] : null;
+        let filePath = languages.length >= 2 ? languages[1] : null;
+
+        if (parent_tagName === "pre") {
+          // prism
+          if (!!language) ch(parent).attr("data-label", filePath);
+          //
+          if (!!language) ch(parent).attr("data-lang", language);
+          if (!!filePath) ch(parent).attr("data-file", filePath);
+        }
+
+        if (className.startsWith("language-mermaid")) {
+          // WP mermaid
+          className = "mermaid";
+        } else if (className.startsWith("language-diff")) {
+          // diff
+          className = "language-diff";
+          className += " diff-highlight";
+          // linenumbers
+          if (useLineNumbers) className += " line-numbers";
+        } else {
+          className = `language-${language}`;
+          // linenumbers
+          if (useLineNumbers) className += " line-numbers";
+        }
+
+        //
+        return `<code class="${className}">${MarkdownIt().utils.escapeHtml(
+          text
+        )}</code>`;
+      };
+    ```
+
+Like markdown-it, it can be extended with .use(plugin,...params).
+```js
+const wpost = new WPPost(docPath);
+
+wpost.use(require("<plugin"))
 ```
 
 ## Command Line
