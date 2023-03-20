@@ -12,12 +12,11 @@ import { EventEmitter } from "events";
 import  Config  from "./Config";
 export {Config}
 
-
 import  Markdown ,{MarkdownOption} from "./Markdown";
 export {MarkdownOption}
 
 
-// EventEmitterを継承したMyEmitterクラスを定義
+// 
 class WPPostEvent extends EventEmitter {}
 
 
@@ -54,13 +53,13 @@ export default class WPPost extends Markdown {
     for (const key in this.headerData) {
       this.postData[key] = this.headerData[key];
     }
-    // slug指定がない場合はファイル名をslugとする
+    // If there is no slug specification, the file name will be slug
     if (!this.postData["slug"]) {
       this.postData["slug"] = docParsedPath.name;
     }
   }
 
-  async postAsync(
+  public async postAsync(
     apiUrl: string,
     authUser: string,
     authPassword: string
@@ -72,7 +71,7 @@ export default class WPPost extends Markdown {
     //
     this.events.emit("start", {});
 
-    // postDataを解析し、slug 対象を ID にする
+    //Parse postData and set slug target to ID
     for (const key in this.postData) {
       if (this.config.slugKeys.indexOf(key) > -1) {
         const slugs: string[] = this.postData[key];
@@ -87,25 +86,21 @@ export default class WPPost extends Markdown {
     //
     this.events.emit("parsed", this.postData);
 
-    // mdの content 部分を markdown-it でレンダリング
+    // Render the content part of markdown with markdown-it
     let content: string = await this.renderAsync();
 
     //
     this.events.emit("rendered", { content: content });
 
-    // ノード解析
+    // node
     const ch = cheerio.load(content);
 
-    // img 処理
+    // img 
     await this.uploadAndSizingAsync(this.postData, ch, docParsedPath);
 
-    // restore html
-    //  content = ch.html(ch("body > *"), {
-    //   decodeEntities: false,
-    // });
 
-    // 最終出力内容フォーマット
-    // rootエレメントが必要なため単純にhtml()で展開(html->head,body が含まれる)
+    // Format final output content
+    // Since the root element is required, simply expand with html() (html->head,body included)
     content = WPPost.Format(ch.html());
     //
     this.postData["content"] = content;
@@ -121,7 +116,7 @@ export default class WPPost extends Markdown {
     this.events.emit("configured", { postData: this.postData });
 
     // post
-    // 対象のslugがアップロード済みか判断するためAPIにリクエスト
+    // Make a request to the API to determine if the target slug has been uploaded
     const postItem = await this.getWpItemAsync(
       "posts",
       {
@@ -130,12 +125,12 @@ export default class WPPost extends Markdown {
       },
       false
     );
-    // 新規/上書き でURLが異なるので、取得結果からPOST先成型
+    // The URL is different depending on whether it is new or overwritten. Form before POST from the obtained result
     let postUrl = this.getUrl("posts");
     if (postItem) {
       postUrl = `${postUrl}/${postItem["id"]}/`;
     }
-    // リクエスト
+    // request
     const res = await axios({
       url: postUrl,
       method: `POST`,
@@ -151,10 +146,92 @@ export default class WPPost extends Markdown {
     return id;
   }
 
+  public findLocalFeaturedImage(docParsedPath: path.ParsedPath) {
+    for (const ext of this.getMediaExtensions()) {
+      const imgPath = path.join(
+        docParsedPath.dir,
+        `${docParsedPath.name}${ext}`
+      );
+      if (fs.existsSync(imgPath)) {
+        return imgPath;
+      }
+    }
+    return "";
+  }
+
+
+  
+  public async getLinksAsync(): Promise<WPCheckResult[]> {
+    //
+    const docParsedPath = path.parse(this.docPath);
+    //
+    let content: string = await this.renderAsync();
+    //
+    const localFeaturedImage = this.findLocalFeaturedImage(docParsedPath);
+
+    //
+    const images: string[] = [];
+    if (localFeaturedImage) images.push(localFeaturedImage);
+
+    //
+    const ch = cheerio.load(content);
+    for (const c of ch("img")) {
+      const srcAttr = ch(c).attr("src");
+      if (!srcAttr) continue;
+      if (srcAttr.match(REG_WWWIMG)) continue;
+      //
+      const attachedImgPath = path.join(docParsedPath.dir, srcAttr);
+      images.push(attachedImgPath);
+    }
+
+    //
+    const files: WPCheckResult[] = [];
+    for (const image of images) {
+      files.push({
+        path: image,
+        file: image.replace(`${this.parentDir}\\`, ""),
+        exists: fs.existsSync(image),
+      } as WPCheckResult);
+    }
+
+    return files;
+  }
+
+  public async  getFileReferencesAsync(
+    targets: string[] = [".png", ".jpg", ".gif"]
+  ): Promise<WPCheckResult[]> {
+    // Function definition to get image information under the specified folder in a closer way
+    const listFiles = (dir: string): string[] =>
+      fs
+        .readdirSync(dir, { withFileTypes: true })
+        .flatMap((dirent) =>
+          dirent.isFile()
+            ? [path.join(dir, dirent.name)]
+            : listFiles(path.join(dir, dirent.name))
+        );
+    // Get img used in markdown and its file information
+    const files1: WPCheckResult[] = await this.getLinksAsync();
+    //
+    const files2: WPCheckResult[] = [];
+    // Expand the image (specify a specific extension) in the current directory where .md exists
+    for (const f of listFiles(this.parentDir).filter((a) =>
+      targets.includes(path.extname(a))
+    )) {
+      files2.push({
+        path: f,
+        file: f.replace(`${this.parentDir}\\`, ""),
+        exists: files1.filter((a) => a.path == f).length > 0, // Whether it is used in Markdown
+      } as WPCheckResult);
+    }
+
+    return files2;
+  }
+
+
   /**
    * upload image to wordpess
    */
-  async uploadImageAsync(slug: string, imgPath: string) {
+  private async uploadImageAsync(slug: string, imgPath: string) {
     //
     if (!fs.existsSync(imgPath)) {
       throw new Error(`Not found local image file : ${imgPath}`);
@@ -167,11 +244,11 @@ export default class WPPost extends Markdown {
     //
     const item = await this.getWpItemAsync("media", { slug: slug }, false);
 
-    // 存在済みか？
+    // exist?
     if (item) {
-      // 存在済みの場合削除してアップロードしなおすか？
+      // If it already exists, do you want to delete it and upload it again?
       if (!this.config.forceUploadImage) return item;
-      // 画像削除
+      // Delete media
       let postUrl = this.getUrl("media");
       postUrl = `${postUrl}/${item["id"]}?force=true`;
       await axios({
@@ -197,7 +274,7 @@ export default class WPPost extends Markdown {
     return res.data;
   }
 
-  async featuredMediaAsync(
+  private async featuredMediaAsync(
     postData: { [key: string]: any },
     docParsedPath: path.ParsedPath
   ) {
@@ -214,19 +291,7 @@ export default class WPPost extends Markdown {
     }
   }
 
-  public findLocalFeaturedImage(docParsedPath: path.ParsedPath) {
-    for (const ext of this.getMediaExtensions()) {
-      const imgPath = path.join(
-        docParsedPath.dir,
-        `${docParsedPath.name}${ext}`
-      );
-      if (fs.existsSync(imgPath)) {
-        return imgPath;
-      }
-    }
-    return "";
-  }
-
+  
   private async uploadAndSizingAsync(
     postData: { [key: string]: any },
     ch: cheerio.CheerioAPI,
@@ -480,6 +545,11 @@ export default class WPPost extends Markdown {
     throw new Error(`Not support media type : ${extension}`);
   }
 
+  
+  private getImageMaxSize(): [number, number] {
+    return [this.config.imagemaxWidth, this.config.imagemaxHeight];
+  }
+
   /**
    * Create relative Url
    */
@@ -488,9 +558,6 @@ export default class WPPost extends Markdown {
     return imgSrc.replace(siteUrl, "");
   }
 
-  private getImageMaxSize(): [number, number] {
-    return [this.config.imagemaxWidth, this.config.imagemaxHeight];
-  }
 
   /*
   private getAttachedImageThumbnailSlug(
@@ -504,71 +571,6 @@ export default class WPPost extends Markdown {
   }
   */
 
-  public getLinks(): WPCheckResult[] {
-    //
-    const docParsedPath = path.parse(this.docPath);
-    //
-    const content: string = this.content;
-
-    const localFeaturedImage = this.findLocalFeaturedImage(docParsedPath);
-
-    //
-    const images: string[] = [];
-    if (localFeaturedImage) images.push(localFeaturedImage);
-
-    //
-    const ch = cheerio.load(content);
-    for (const c of ch("img")) {
-      const srcAttr = ch(c).attr("src");
-      if (!srcAttr) continue;
-      if (srcAttr.match(REG_WWWIMG)) continue;
-      //
-      const attachedImgPath = path.join(docParsedPath.dir, srcAttr);
-      images.push(attachedImgPath);
-    }
-
-    //
-    const files: WPCheckResult[] = [];
-    for (const image of images) {
-      files.push({
-        path: image,
-        file: image.replace(`${this.parentDir}\\`, ""),
-        exists: fs.existsSync(image),
-      } as WPCheckResult);
-    }
-
-    return files;
-  }
-
-  public getFileReferences(
-    targets: string[] = [".png", ".jpg", ".gif"]
-  ): WPCheckResult[] {
-    // closer的に、指定フォルダ配下にある画像情報を取得する関数定義
-    const listFiles = (dir: string): string[] =>
-      fs
-        .readdirSync(dir, { withFileTypes: true })
-        .flatMap((dirent) =>
-          dirent.isFile()
-            ? [path.join(dir, dirent.name)]
-            : listFiles(path.join(dir, dirent.name))
-        );
-    // markdown で使用されている img とそのファイル情報を取得
-    const files1: WPCheckResult[] = this.getLinks();
-    //
-    const files2: WPCheckResult[] = [];
-    // .md が存在するカレントディレクトリ内の画像（特定の拡張子を指定）を展開
-    for (const f of listFiles(this.parentDir).filter((a) =>
-      targets.includes(path.extname(a))
-    )) {
-      files2.push({
-        path: f,
-        file: f.replace(`${this.parentDir}\\`, ""),
-        exists: files1.filter((a) => a.path == f).length > 0, // Markdown中で使用されているかの有無
-      } as WPCheckResult);
-    }
-
-    return files2;
-  }
 
   /* ---------- static ----------*/
 
@@ -584,7 +586,7 @@ export default class WPPost extends Markdown {
     //
     const filePath = path.join(base, src);
 
-    // 存在チェック
+    // exist?
     if (!fs.existsSync(filePath))
       throw new Error(`file is not founded. ${filePath}`);
 

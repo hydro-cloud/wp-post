@@ -6,7 +6,7 @@ You can run a script or command to post your markdown files to wordpress.
 
 In addition, we have prepared a function to detect broken links of image files in Markdown and images not used in Markdown in the folder where Markdown is placed.
 
-
+>I'm sorry, but when I updated to version 0.1.0, I refactored the method name. Mainly, we received information that there was confusion during implementation because there was no "Async" suffix even though it was an "asynchronous method", so we fixed it. If you are using an earlier version, updating may cause compilation errors.
 
 # Installing
 ## Package manager
@@ -53,10 +53,10 @@ post01
 >Similarly, if "slug" is not specified, the file name will be slug.
 
 
-### wppost
+### wppostAync
 Convert the markdown file to HTML and post it to WordPress.
 ```js
-import { wppost } from "wp-post";
+import { wppostAync } from "wp-post";
 
 const docPath = "./post01/post01.md";
 const apiUrl = config.apiUrl; // e.g https://example.com/wp-json/wp/v2
@@ -64,30 +64,32 @@ const authUser = config.authUser;// e.g userName,mail
 const authPassword = config.authPassword;// e.g "xxxs xxxs xxxs xxxs xxxs xxxx"
 
 //
-const postId = await wppost(docPath, apiUrl, authUser, authPassword);
+const postId = await wppostAync(docPath, apiUrl, authUser, authPassword);
 console.log(postId): // post id
 ```
 
-### getLinks , getFileReferences
-`getLinks` detects the link status of images in the markdown, 
-`getFileReferences` detects the link status of image files in the folder where the markdown is located.
+### getLinksAsync , getFileReferencesAsync
+`getLinksAsync` detects the link status of images in the markdown, 
+`getFileReferencesAsync` detects the link status of image files in the folder where the markdown is located.
 ```js
-import { getLinks, getFileReferences } from "wp-post";
+import { getLinksAsync, getFileReferencesAsync } from "wp-post";
 
 const docPath = "./post01/post01.md";
-const results1 = getLinks(docPath);
+const results1 = await getLinksAsync(docPath);
 console.log(results1): //  images that cannot be referenced in markdown.
 
-const results2 = getFileReferences(docPath);
+const results2 = await getFileReferencesAsync(docPath);
 console.log(results2): // A list of the referencing status of files.
 ```
->`getFileReferences`
+>`getFileReferencesAsync`
 The default file extensions to be targeted are ".png", ".jpg", and ".gif". They can be specified as a string array in the first argument, for example, [" .png", ".jpg", ".gif"].
 
 
 ### class files
 The above process is defined in the following class: `WPPost` . It can also be used.
 #### WPPost
+
+When using `wppostAync()` 
 ```js
 import WPPost from "wp-post";
 const wpost = new WPPost(docPath);
@@ -100,14 +102,16 @@ const apiUrl = config.apiUrl;
 const authUser = config.authUser;
 const authPassword = config.authPassword;
 //
-const postId = await wpost.post(apiUrl, authUser, authPassword);
+const postId = await wpost.postAsync(apiUrl, authUser, authPassword);
 ```
 
-```js
-const checker = new WPPost(docPath);
+When using `getLinksAsync()` or `getFileReferencesAsync()`  .
 
-const results1 = checker.getFileReferences();
-const results2 = checker.getLinks();
+```js
+const wpost = new WPPost(docPath);
+
+const results1 = await wpost.getLinksAsync();
+const results2 = await wpost.getFileReferencesAsync();
 ```
 ##### Advanced usage
 * change template
@@ -125,9 +129,12 @@ wpost.template.tplDetail= new Template(`<details><summary>!!{{label}}!!aaa</summ
 >Specify the first argument of the Template class as the opening tag and the second argument as the closing tag.
 
 
+
 Or you can override the tag generation logic itself to do your own thing.
 Here is a sample combined with the previous template. See this specification here [markdown-it-container](https://www.npmjs.com/package/markdown-it-container).
 ```js
+  const wpost = new WPPost(docPath);
+
   wpost.template.detail= (
     tokens: any, idx: any
   ) :string=>{
@@ -346,6 +353,13 @@ Here are the embedded keys and values ​​provided by each template.
         )}</code>`;
       };
     ```
+
+Like markdown-it, it can be extended with .use(plugin,...params).
+```js
+const wpost = new WPPost(docPath);
+
+wpost.use(require("<plugin"))
+```
 
 ## Command Line
 ### wppost

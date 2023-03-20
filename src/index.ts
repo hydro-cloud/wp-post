@@ -1,5 +1,5 @@
 //
-import WPPost, { MarkdownOption ,WPCheckResult} from "./WPPost";
+import WPPost, { MarkdownOption ,WPCheckResult} from "./lib/WPPost";
 
 export const wppostAync = async (
   docPath: string,
@@ -15,14 +15,14 @@ export const wppostAync = async (
   return postId;
 };
 
-export const getLinks = (docPath: string): WPCheckResult[] => {
+export const  getLinksAsync = async(docPath: string): Promise<WPCheckResult[]> => {
   const wppost = new WPPost(docPath);
-  return wppost.getLinks();
+  return await wppost.getLinksAsync();
 };
 
-export const getFileReferences = (docPath: string): WPCheckResult[] => {
+export const getFileReferencesAsync = async(docPath: string): Promise<WPCheckResult[]> => {
   const wppost = new WPPost(docPath);
-  return wppost.getFileReferences();
+  return await wppost.getFileReferencesAsync();
 };
 
 //

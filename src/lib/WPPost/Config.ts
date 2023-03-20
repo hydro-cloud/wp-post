@@ -70,21 +70,20 @@ export default class Config {
 
     let saveDir;
     if (os.platform() === "win32") {
-      // Windowsの場合は%AppData%ディレクトリに保存
+      // for windows
       const appDataPath = process.env["APPDATA"];
       if (!appDataPath) throw new Error("can not find APPDATA.");
       saveDir = path.join(appDataPath, projectDirName);
     } else {
-      // Unixベースのシステムの場合はホームディレクトリ以下に保存
+      // for unix.
       saveDir = path.join(os.homedir(), projectDirName);
     }
 
-    // ディレクトリが存在しない場合は作成
+    // 
     if (!fs.existsSync(saveDir)) {
       fs.mkdirSync(saveDir);
     }
 
-    // ファイルの保存先
     // FIXME: hardcode
     const savePath = path.join(saveDir, "config.json");
     return savePath;
