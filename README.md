@@ -6,7 +6,7 @@ You can run a script or command to post your markdown files to wordpress.
 
 In addition, we have prepared a function to detect broken links of image files in Markdown and images not used in Markdown in the folder where Markdown is placed.
 
->I'm sorry, but when I updated to version 0.1.0, I refactored the method name. Mainly, we received information that there was confusion during implementation because there was no "Async" suffix even though it was an "asynchronous method", so we fixed it. If you are using an earlier version, updating may cause compilation errors.
+>I'm sorry, but when I updated to version 1.0.0, I refactored the method name. Mainly, we received information that there was confusion during implementation because there was no "Async" suffix even though it was an "asynchronous method", so we fixed it. If you are using an earlier version, updating may cause compilation errors.
 
 # Installing
 ## Package manager
