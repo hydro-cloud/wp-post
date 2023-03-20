@@ -1,6 +1,6 @@
 {
   "name": "wp-post",
-  "version": "0.0.3",
+  "version": "1.0.0",
   "description": "Convert .md (markdown file) to html and post to wordpress.",
   "main": "dist/index.js",
   "license": "MIT",
@@ -16,7 +16,6 @@
     "test": "jest --silent=false --verbose false"
   },
   "devDependencies": {
-    "@types/argparse": "^2.0.10",
     "@types/axios": "^0.14.0",
     "@types/jest": "^25.2.3",
     "@types/node": "^18.15.0",
@@ -28,7 +27,7 @@
   "dependencies": {
     "@types/markdown-it": "^12.2.3",
     "@types/probe-image-size": "^7.2.0",
-    "argparse": "^2.0.1",
+    "@types/inquirer": "^9.0.3",
     "axios": "^0.24.0",
     "cheerio": "^1.0.0-rc.10",
     "commander": "^10.0.0",
@@ -41,7 +40,6 @@
     "markdown-it-footnote": "^3.0.3",
     "markdown-it-mark": "^3.0.1",
     "markdown-it-prism": "^2.3.0",
-    "markvis": "^0.0.12",
     "prettier": "^2.8.4",
     "probe-image-size": "^7.2.3",
     "sharp": "^0.30.7"
@@ -72,7 +70,7 @@
     "type": "git",
     "url": "git+https://github.com/hydro-cloud/wp-post.git"
   },
-  "author": "tom",
+  "author": "tom stonefield",
   "bugs": {
     "url": "https://github.com/hydro-cloud/wp-post/issues"
   },

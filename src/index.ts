@@ -1,28 +1,28 @@
 //
-import WPPost, { WPPostOption ,WPCheckResult} from "./WPPost";
+import WPPost, { MarkdownOption ,WPCheckResult} from "./lib/WPPost";
 
-export const wppost = async (
+export const wppostAync = async (
   docPath: string,
   apiUrl: string,
   authUser: string,
   authPassword: string,
-  options?: WPPostOption
+  options?: MarkdownOption
 ): Promise<string> => {
   const wpost = new WPPost(docPath,options);
  
   //
-  const postId = await wpost.post(apiUrl, authUser, authPassword);
+  const postId = await wpost.postAsync(apiUrl, authUser, authPassword);
   return postId;
 };
 
-export const getLinks = (docPath: string): WPCheckResult[] => {
+export const  getLinksAsync = async(docPath: string): Promise<WPCheckResult[]> => {
   const wppost = new WPPost(docPath);
-  return wppost.getLinks();
+  return await wppost.getLinksAsync();
 };
 
-export const getFileReferences = (docPath: string): WPCheckResult[] => {
+export const getFileReferencesAsync = async(docPath: string): Promise<WPCheckResult[]> => {
   const wppost = new WPPost(docPath);
-  return wppost.getFileReferences();
+  return await wppost.getFileReferencesAsync();
 };
 
 //

@@ -1,36 +1,45 @@
 import * as path from "path";
 
-import { wppost,  getLinks,  getFileReferences } from "../src";
+import { wppostAync, getLinksAsync, getFileReferencesAsync } from "../src";
 
 const config = require("./config.json");
+const docPath01 = path.join(path.resolve(__dirname, '..', 'tests'), config.samples.post01);
+const docPath02 = path.join(path.resolve(__dirname, '..', 'tests'), config.samples.sample);
+describe("#wppostAync", () => {
+  test("default", async () => {
+    //
 
-test("wppost", async () => {
-  //
+    const docPath = docPath01;
 
-  const docPath = path.join(__dirname, config.samples.post01);
+    const apiUrl = config.apiUrl;
+    const authUser = config.authUser;
+    const authPassword = config.authPassword;
 
-  const apiUrl = config.apiUrl;
-  const authUser = config.authUser;
-  const authPassword = config.authPassword;
-
-  //
-  const postId = await wppost(docPath, apiUrl, authUser, authPassword);
-  //
-  expect(postId).not.toBeNull();
-}, 30000);
-
-test("markdown中の画像のリンク切れ", () => {
-  const docPath = path.join(__dirname, config.samples.sample);
-
-  const results = getLinks(docPath);
-
-  expect(results.length).toBe(3);
+    //
+    const postId = await wppostAync(docPath, apiUrl, authUser, authPassword);
+    //
+    expect(postId).not.toBeNull();
+  }, 30000);
 });
 
-test("markdown中で使用されていない画像", () => {
-  const docPath = path.join(__dirname, config.samples.sample);
+//
+describe("#getLinksAsync", () => {
+  test("default",async () => {
+    const docPath = path.join(docPath02);
 
-  const results = getFileReferences(docPath);
+    const results =await getLinksAsync(docPath);
 
-  expect(results.length).toBe(4);
+    expect(results.length).toBe(3); // LocalFeaturedImage x1 + image x2
+  });
+});
+
+//
+describe("#getFileReferencesAsync", () => {
+  test("default", async() => {
+    const docPath = path.join(docPath02);
+
+    const results =await getFileReferencesAsync(docPath);
+
+    expect(results.length).toBe(4);
+  });
 });

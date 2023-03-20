@@ -1,7 +1,21 @@
 ---
-title: 記事のタイトル!!!!!
+title: title
 status: draft
 ---
+
+
+::: detail  
+*here be dragons*
+:::
+
+::: detail-open  
+*here be dragons*
+:::
+
+
+::: note 
+Primary
+:::
 
 <p>test1</p>
 
@@ -40,7 +54,7 @@ public class Hoge{
 
 }
 ```
-==ハイライト==
+abc==defg==hijklm
 
 +++ Click me!
 H　==dden== text
@@ -103,22 +117,22 @@ alert
 
 
 ::: sticky st-blue
-付箋風ボックス
+sticky
 :::
 
 
-::: label ラベルボックスのタイトル
-ラベルボックス
+::: label title
+label
 :::
 
 
 ::: speech {"image":"https://hydro-cloud.com/wp-content/themes/cocoon-master/images/man.png","name":"hoge"}
-トーク内容A
+talk content1.
 :::
 
 
 ::: speech {"image":"https://hydro-cloud.com/wp-content/themes/cocoon-master/images/woman.png","name":"foo","opposite":true}
-トーク内容B
+talk content2.
 :::
 
 
@@ -152,7 +166,7 @@ puts 'Hello, World'
 
 `hsla(100, 24%, 40%, 0.5)`
 
-打ち消し線を使うには ~~ で囲みます。 ~~打ち消し~~
+strike  ~~ strike ~~
 
 
 
