@@ -1,0 +1,14 @@
+{
+  "apiUrl": "https://hydro-cloud.com/wp-json/wp/v2",
+  "authUser": "tom@hydro-cloud.com",
+  "authPassword": "FePJ z5C4 k2Us t8nQ avDc OwMv",
+  "samples": {
+    "post01": "samples\\post01\\post01.md",
+    "sample": "samples\\sample\\sample.md",
+    "nopost01": "samples\\nopost\\nopost01.md",
+    "nopost02": "samples\\nopost\\nopost02.md",
+    "nopost03": "samples\\nopost\\nopost03.md",
+    "nopost04": "samples\\nopost\\nopost04.md",
+    "nopost05": "samples\\nopost\\nopost05.md"
+  }
+}

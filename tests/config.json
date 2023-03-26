@@ -1,9 +1,0 @@
-{
-  "apiUrl": "https://<wordpress url>/wp-json/wp/v2",
-  "authUser": "username",
-  "authPassword": "password",
-  "samples": {
-    "post01": "samples\\post01\\post01.md",
-    "sample": "samples\\sample\\sample.md"
-  }
-}
