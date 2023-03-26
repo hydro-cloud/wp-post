@@ -18,7 +18,7 @@ describe("#config", () => {
   const config = new Config();
 
   test("default", async () => {
-    
+
     {
       config.apiUrl = "a";
       config.authUser = "b";
@@ -32,7 +32,7 @@ describe("#config", () => {
     }
   });
 
-  
+
   // test("delete", async () => {
 
   //   const child = spawn('"node ./dist/bin/wp-post config -d');
@@ -62,7 +62,7 @@ describe("#config", () => {
 describe("#check", () => {
   test("default", async () => {
     const { stdout } = await execPromise(
-      "node ./dist/bin/wp-post ./tests/samples/sample/sample.md -c"
+      "node ./dist/bin/wp-post ./__tests__/samples/sample/sample.md -c"
     );
     expect(stdout.trim()).not.toBeNull();
   });
