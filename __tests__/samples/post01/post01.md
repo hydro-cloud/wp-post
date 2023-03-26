@@ -40,7 +40,7 @@ public class Hoge{
 ```
 
 ![](images/test-b.png)
-<!-- ![](images/2023-02-22-09-06-45x.png) -->
+![](images/2023-02-22-09-06-45x.png)
 
 ```java
 public class Hoge{
