@@ -19,7 +19,7 @@ export interface MarkdownOption {
 }
 
 export class Template {
-  constructor(public start: string = "", public end: string = "") {}
+  constructor(public start: string = "", public end: string = "") { }
 
   // alias:renderStart for single string.
   public render(param: Record<string, any> = {}) {
@@ -363,7 +363,7 @@ export default class Markdown {
 
     // check document file extension
     if (docParsedPath.ext !== ".md") {
-      const msg = `Not a Markdow file: ${docParsedPath.base}`;
+      const msg = `Not a Markdown file: ${docParsedPath.base}`;
       throw new Error(msg);
     }
     //
@@ -442,6 +442,12 @@ export default class Markdown {
     return Markdown.Format(ch.html());
   }
 
+  public async outputAsync(filePath:string): Promise<void> {
+    const text = await this.renderAsync();
+    await fs.promises.writeFile(filePath, text);
+
+  }
+
 
   public code(
     ch: cheerio.CheerioAPI,
@@ -508,7 +514,8 @@ export default class Markdown {
     }
   }
 
-  
+
+
   public static Format(text: string): string {
     let content = prettier.format(text, {
       parser: "html",

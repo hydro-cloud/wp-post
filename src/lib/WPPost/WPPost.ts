@@ -9,26 +9,22 @@ import probe from "probe-image-size";
 
 import { EventEmitter } from "events";
 
-import  Config  from "./Config";
-export {Config}
+import Config from "./Config";
+export { Config };
 
-import  Markdown ,{MarkdownOption} from "./Markdown";
-export {MarkdownOption}
+import Markdown, { MarkdownOption } from "./Markdown";
+export { MarkdownOption };
 
-
-// 
+//
 class WPPostEvent extends EventEmitter {}
 
-
 export const REG_WWWIMG = new RegExp("^(http|https):.+");
-
 
 export interface WPCheckResult {
   path: string;
   file: string;
   exists: boolean;
 }
-
 
 /**
  * Post to wordpress from current document.
@@ -95,9 +91,8 @@ export default class WPPost extends Markdown {
     // node
     const ch = cheerio.load(content);
 
-    // img 
+    // img
     await this.uploadAndSizingAsync(this.postData, ch, docParsedPath);
-
 
     // Format final output content
     // Since the root element is required, simply expand with html() (html->head,body included)
@@ -159,8 +154,6 @@ export default class WPPost extends Markdown {
     return "";
   }
 
-
-  
   public async getLinksAsync(): Promise<WPCheckResult[]> {
     //
     const docParsedPath = path.parse(this.docPath);
@@ -197,7 +190,7 @@ export default class WPPost extends Markdown {
     return files;
   }
 
-  public async  getFileReferencesAsync(
+  public async getFileReferencesAsync(
     targets: string[] = [".png", ".jpg", ".gif"]
   ): Promise<WPCheckResult[]> {
     // Function definition to get image information under the specified folder in a closer way
@@ -225,6 +218,35 @@ export default class WPPost extends Markdown {
     }
 
     return files2;
+  }
+
+  
+  
+  public checkPost(): void {
+    // header
+      // 1. null もしくは {} であるか？
+  if (!this.headerData || Object.keys(this.headerData).length === 0) {
+    throw new Error("invarid headerData.");
+  }
+
+  // 2. キーに "status" というものがあるか？
+  if (!this.headerData.hasOwnProperty('status')) {
+    throw new Error("no status.");
+  }
+
+  // 3. このstatus のキーで値を取得した際に null やから文字列であるか？
+  const statusValue = this.headerData['status'];
+  if (statusValue === null || typeof statusValue !== 'string') {
+    throw new Error("invarid status.");
+  }
+
+  // コンテンツが無い
+    if (!this.content || !(this.content.trim())){
+      throw new Error("no contents.");
+
+    }
+    //
+
   }
 
 
@@ -291,7 +313,6 @@ export default class WPPost extends Markdown {
     }
   }
 
-  
   private async uploadAndSizingAsync(
     postData: { [key: string]: any },
     ch: cheerio.CheerioAPI,
@@ -299,136 +320,145 @@ export default class WPPost extends Markdown {
   ) {
     const imgs = ch("img");
     for (let i = 0; i < imgs.length; i++) {
-      // src attr
-      let srcAttr = ch(imgs[i]).attr("src");
-      if (!srcAttr) continue;
+      //
+      try {
+        // src attr
+        let srcAttr = ch(imgs[i]).attr("src");
+        if (!srcAttr) continue;
 
-      // save src attr to use useLinkableImage
-      let linkUri = srcAttr;
+        // save src attr to use useLinkableImage
+        let linkUri = srcAttr;
 
-      // add title attribute
-      if (this.config.addTitleAttribute) {
-        if (!ch(imgs[i]).attr("title")) {
-          ch(imgs[i]).attr("title", ch(imgs[i]).attr("alt"));
-        }
-      }
-
-      // Get image size information
-      const [orgImgWidth, orgImgHeight] = await WPPost.GetImageSizeAsync(
-        docParsedPath.dir,
-        srcAttr
-      );
-      const [maxImgWidth, maxImgHeight] = this.getImageMaxSize();
-      const [displayImgWidth, displayImgHeight] = WPPost.CalculateImageSize(
-        orgImgWidth,
-        orgImgHeight,
-        maxImgWidth,
-        maxImgHeight
-      );
-
-      // replace src attr
-      if (srcAttr.match(REG_WWWIMG)) {
-        // www link -> as is
-        // srcAttr = srcAttr
-        if (this.config.resize) {
-          ch(imgs[i]).attr("width", displayImgWidth.toString());
-          ch(imgs[i]).attr("height", displayImgHeight.toString());
-        } else {
-          if (this.config.addSizeAttributes) {
-            ch(imgs[i]).attr("width", orgImgWidth.toString());
-            ch(imgs[i]).attr("height", orgImgHeight.toString());
+        // add title attribute
+        if (this.config.addTitleAttribute) {
+          if (!ch(imgs[i]).attr("title")) {
+            ch(imgs[i]).attr("title", ch(imgs[i]).attr("alt"));
           }
         }
-      } else {
-        // local(relative link) -> upload and replace src attr
-        // upload
-        const attachedImgPath = path.join(docParsedPath.dir, srcAttr);
-        const imgSlug = this.getAttachedImageSlug(
-          path.parse(attachedImgPath).name,
-          postData["slug"]
+
+        // Get image size information
+        const [orgImgWidth, orgImgHeight] = await WPPost.GetImageSizeAsync(
+          docParsedPath.dir,
+          srcAttr
         );
-        /*
+        const [maxImgWidth, maxImgHeight] = this.getImageMaxSize();
+        const [displayImgWidth, displayImgHeight] = WPPost.CalculateImageSize(
+          orgImgWidth,
+          orgImgHeight,
+          maxImgWidth,
+          maxImgHeight
+        );
+
+        // replace src attr
+        if (srcAttr.match(REG_WWWIMG)) {
+          // www link -> as is
+          // srcAttr = srcAttr
+          if (this.config.resize) {
+            ch(imgs[i]).attr("width", displayImgWidth.toString());
+            ch(imgs[i]).attr("height", displayImgHeight.toString());
+          } else {
+            if (this.config.addSizeAttributes) {
+              ch(imgs[i]).attr("width", orgImgWidth.toString());
+              ch(imgs[i]).attr("height", orgImgHeight.toString());
+            }
+          }
+        } else {
+          // local(relative link) -> upload and replace src attr
+          // upload
+          const attachedImgPath = path.join(docParsedPath.dir, srcAttr);
+          const imgSlug = this.getAttachedImageSlug(
+            path.parse(attachedImgPath).name,
+            postData["slug"]
+          );
+          /*
         const imgItem = await uploadImage(context, imgSlug, attachedImgPath);
         // replace src
         srcAttr = context.replaceAttachedImageUrl(imgItem["source_url"]);
         linkUri = srcAttr;
         */
 
-        // generate thumbnail image if needed.
-        if (this.config.resize) {
-          if (
-            orgImgWidth !== displayImgWidth ||
-            orgImgHeight !== displayImgHeight
-          ) {
-            const size =
-              displayImgWidth.toString() + "x" + displayImgHeight.toString();
-            const thumbnail = path.join(
-              path.parse(attachedImgPath).dir,
-              path.parse(attachedImgPath).name +
-                "-" +
-                size +
-                path.parse(attachedImgPath).ext
-            );
-            //
-            // const thumbnailSlug = this.getAttachedImageThumbnailSlug(imgSlug, displayImgWidth, displayImgHeight);
+          // generate thumbnail image if needed.
+          if (this.config.resize) {
+            if (
+              orgImgWidth !== displayImgWidth ||
+              orgImgHeight !== displayImgHeight
+            ) {
+              const size =
+                displayImgWidth.toString() + "x" + displayImgHeight.toString();
+              const thumbnail = path.join(
+                path.parse(attachedImgPath).dir,
+                path.parse(attachedImgPath).name +
+                  "-" +
+                  size +
+                  path.parse(attachedImgPath).ext
+              );
+              //
+              // const thumbnailSlug = this.getAttachedImageThumbnailSlug(imgSlug, displayImgWidth, displayImgHeight);
 
-            /* generate thumbnail */
-            const sharp = require("sharp");
-            try {
-              let data = sharp(attachedImgPath).resize({
-                width: displayImgWidth,
-                height: displayImgHeight,
-                fit: "fill",
-              });
+              /* generate thumbnail */
+              const sharp = require("sharp");
+              try {
+                let data = sharp(attachedImgPath).resize({
+                  width: displayImgWidth,
+                  height: displayImgHeight,
+                  fit: "fill",
+                });
 
-              // encode JPEG or PNG according to configuration
-              const ext = path.parse(attachedImgPath).ext.toLowerCase();
-              if (ext === ".jpg" || ext === ".jpeg") {
-                data = data.jpeg({
-                  quality: this.config.resizeJpegQuality,
-                  mozjpeg: this.config.resizeJpegUseMozjpeg,
-                });
+                // encode JPEG or PNG according to configuration
+                const ext = path.parse(attachedImgPath).ext.toLowerCase();
+                if (ext === ".jpg" || ext === ".jpeg") {
+                  data = data.jpeg({
+                    quality: this.config.resizeJpegQuality,
+                    mozjpeg: this.config.resizeJpegUseMozjpeg,
+                  });
+                }
+                if (ext === ".png") {
+                  data = data.png({
+                    palette: this.config.resizePngUsePalette,
+                  });
+                }
+                data.toFile(thumbnail);
+              } catch (err) {
+                const msg = `Can't generate thumbnail file: ${attachedImgPath}`;
+                throw new Error(msg);
               }
-              if (ext === ".png") {
-                data = data.png({
-                  palette: this.config.resizePngUsePalette,
-                });
+
+              /* upload thumbnail to wordpress */
+              const imgItem = await this.uploadImageAsync(imgSlug, thumbnail);
+              //
+              srcAttr = this.replaceAttachedImageUrl(imgItem["source_url"]);
+              linkUri = srcAttr;
+
+              if (this.config.addSizeAttributes) {
+                ch(imgs[i]).attr("width", displayImgWidth.toString());
+                ch(imgs[i]).attr("height", displayImgHeight.toString());
               }
-              data.toFile(thumbnail);
-            } catch (err) {
-              const msg = `Can't generate thumbnail file: ${attachedImgPath}`;
-              throw new Error(msg);
             }
+          } else {
+            const imgItem = await this.uploadImageAsync(
+              imgSlug,
+              attachedImgPath
+            );
 
-            /* upload thumbnail to wordpress */
-            const imgItem = await this.uploadImageAsync(imgSlug, thumbnail);
-            //
+            // replace src
             srcAttr = this.replaceAttachedImageUrl(imgItem["source_url"]);
             linkUri = srcAttr;
 
             if (this.config.addSizeAttributes) {
-              ch(imgs[i]).attr("width", displayImgWidth.toString());
-              ch(imgs[i]).attr("height", displayImgHeight.toString());
+              ch(imgs[i]).attr("width", orgImgWidth.toString());
+              ch(imgs[i]).attr("height", orgImgHeight.toString());
             }
           }
-        } else {
-          const imgItem = await this.uploadImageAsync(imgSlug, attachedImgPath);
-
-          // replace src
-          srcAttr = this.replaceAttachedImageUrl(imgItem["source_url"]);
-          linkUri = srcAttr;
-
-          if (this.config.addSizeAttributes) {
-            ch(imgs[i]).attr("width", orgImgWidth.toString());
-            ch(imgs[i]).attr("height", orgImgHeight.toString());
-          }
         }
-      }
-      const newImgTag = ch.html(ch(imgs[i]).attr("src", srcAttr));
-      if (this.config.useLinkableImage) {
-        ch(imgs[i]).replaceWith(`<a href="${linkUri}">${newImgTag}</a>`);
-      } else {
-        ch(imgs[i]).replaceWith(`${newImgTag}`);
+        const newImgTag = ch.html(ch(imgs[i]).attr("src", srcAttr));
+        if (this.config.useLinkableImage) {
+          ch(imgs[i]).replaceWith(`<a href="${linkUri}">${newImgTag}</a>`);
+        } else {
+          ch(imgs[i]).replaceWith(`${newImgTag}`);
+        }
+      } catch (error) {
+        // 例外でもループは継続
+        console.error(error.message);
       }
     }
   }
@@ -545,7 +575,6 @@ export default class WPPost extends Markdown {
     throw new Error(`Not support media type : ${extension}`);
   }
 
-  
   private getImageMaxSize(): [number, number] {
     return [this.config.imagemaxWidth, this.config.imagemaxHeight];
   }
@@ -558,7 +587,6 @@ export default class WPPost extends Markdown {
     return imgSrc.replace(siteUrl, "");
   }
 
-
   /*
   private getAttachedImageThumbnailSlug(
     imageSlug: string,
@@ -570,7 +598,6 @@ export default class WPPost extends Markdown {
     return imageSlug + sep + size;
   }
   */
-
 
   /* ---------- static ----------*/
 

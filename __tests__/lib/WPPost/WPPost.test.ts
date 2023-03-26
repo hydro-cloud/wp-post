@@ -8,13 +8,18 @@ import WPPost from "../../../src/lib/WPPost";
 import { Template } from "../../../src/lib/WPPost/Markdown";
 
 const config = require("../../config.json");
-const docPath01 = path.join(path.resolve(__dirname, '../../..', 'tests'), config.samples.post01);
-const docPath02 = path.join(path.resolve(__dirname, '../../..', 'tests'), config.samples.sample);
+const post01 = path.join(path.resolve(__dirname, '../../..', '__tests__'), config.samples.post01);
+const sample = path.join(path.resolve(__dirname, '../../..', '__tests__'), config.samples.sample);
+const nopost01 = path.join(path.resolve(__dirname, '../../..', '__tests__'), config.samples.nopost01);
+const nopost02 = path.join(path.resolve(__dirname, '../../..', '__tests__'), config.samples.nopost02);
+const nopost03 = path.join(path.resolve(__dirname, '../../..', '__tests__'), config.samples.nopost03);
+const nopost04 = path.join(path.resolve(__dirname, '../../..', '__tests__'), config.samples.nopost04);
+const nopost05 = path.join(path.resolve(__dirname, '../../..', '__tests__'), config.samples.nopost05);
 
 describe("#postAsync", () => {
   test("default", async () => {
     //
-    const wpost = new WPPost(docPath01);
+    const wpost = new WPPost(post01);
     //
     const apiUrl = config.apiUrl;
     const authUser = config.authUser;
@@ -26,10 +31,10 @@ describe("#postAsync", () => {
   }, 30000);
 
 
-  
+
   test("custom render", async () => {
     //
-    const wpost = new WPPost(docPath01);
+    const wpost = new WPPost(post01);
 
     wpost.use(require("markdown-it-container"), "detail", {
       //
@@ -71,7 +76,7 @@ describe("#postAsync", () => {
   // test("error", async () => {
   //   //
   //   await expect(async():Promise<void>=>{
-      
+
   //   const wpost = new WPPost(docPath02);
   //   //
   //   const apiUrl = config.apiUrl;
@@ -84,9 +89,9 @@ describe("#postAsync", () => {
 });
 
 describe("#getLinksAsync", () => {
-  test("default", async() => {
-    const checker = new WPPost(docPath02);
-    const results = await checker.getLinksAsync();
+  test("default", async () => {
+    const wpost = new WPPost(sample);
+    const results = await wpost.getLinksAsync();
 
     expect(results.length).toBe(3);
 
@@ -94,21 +99,59 @@ describe("#getLinksAsync", () => {
 });
 
 describe("#getFileReferencesAsync", () => {
-  test("default", async() => {
-    const checker = new WPPost(docPath02);
-    const results = await checker.getFileReferencesAsync();
+  test("default", async () => {
+    const wpost = new WPPost(sample);
+    const results = await wpost.getFileReferencesAsync();
 
     expect(results.length).toBe(4);
 
-    expect(results.filter((a) => a.exists).length).toBe(2); 
+    expect(results.filter((a) => a.exists).length).toBe(2);
   });
 });
 
 describe("#renderAsync", () => {
   test("default", async () => {
-    const checker = new WPPost(docPath02);
-    const result = await checker.renderAsync();
+    const wpost = new WPPost(sample);
+    const result = await wpost.renderAsync();
     //
     expect(result).not.toBeNull();
   });
 });
+
+
+
+describe("#checkPost", () => {
+
+  test("post01", async () => {
+    //
+    const wpost = new WPPost(post01);
+    expect(() =>wpost.checkPost()).not.toThrow();
+  });
+  test("nopost01", async () => {
+    //
+    const wpost = new WPPost(nopost01);
+    expect(() =>wpost.checkPost()).toThrow();
+  });
+
+  test("nopost02", async () => {
+    //
+    const wpost = new WPPost(nopost02);
+    expect(() =>wpost.checkPost()).toThrow();
+  });
+  test("nopost03", async () => {
+    //
+    const wpost = new WPPost(nopost03);
+    expect(() =>wpost.checkPost()).toThrow();
+  });
+  test("nopost04", async () => {
+    //
+    const wpost = new WPPost(nopost04);
+    expect(() =>wpost.checkPost()).toThrow();
+  });
+  test("nopost05", async () => {
+    //
+    const wpost = new WPPost(nopost05);
+    expect(() =>wpost.checkPost()).toThrow();
+  });
+});
+
