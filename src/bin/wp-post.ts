@@ -2,13 +2,12 @@
 
 const fs = require("fs");
 const { program } = require("commander");
-import inquirer, { Answers } from 'inquirer';
+import inquirer, { Answers } from "inquirer";
 
 import { wppostAync } from "../index";
 
-
 // import WPPost, { WPPostOption,Config } from "../WPPost";
-import WPPost, { MarkdownOption,Config } from "../lib/WPPost";
+import WPPost, { Config } from "../lib/WPPost";
 //
 const config = new Config();
 
@@ -48,22 +47,18 @@ program
       let api = params.api;
       let user = params.user;
       let password = params.password;
-      let options: MarkdownOption = params.options
-        ? JSON.parse(params.options)
-        : null;
       //
       const useParam =
         params.api != null || params.user != null || params.password != null;
       if (!useParam) {
         await config.readConfig();
-          //
-          api = config.apiUrl;
-          user = config.authUser;
-          password = config.authPassword;
-          if (options != null) options = config.options;
+        //
+        api = config.apiUrl;
+        user = config.authUser;
+        password = config.authPassword;
       }
 
-      const postId = await wppostAync(filePath, api, user, password, options);
+      const postId = await wppostAync(filePath, api, user, password);
       //
       console.log("complete:😀 ", postId);
     } catch (_err) {
@@ -83,6 +78,12 @@ program
         console.log("apiUrl:", config.apiUrl);
         console.log("authUser:", config.authUser);
         console.log("authPassword:", config.authPassword);
+        console.log("apiPostUrl:", config.apiPostUrl);
+        console.log("apiMediaUrl:", config.apiMediaUrl);
+        console.log(
+          "useLinkCardHtmlGenerator:",
+          config.useLinkCardHtmlGenerator
+        );
         // console.log(`authPassword: ${"*".repeat(config.authPassword.length)}`);
       }
     } else if (options.delete) {
@@ -105,24 +106,42 @@ program
       // Prompt the user for input
       await config.readConfig();
       //
-      const answers:Answers = await inquirer.prompt([
+      const answers: Answers = await inquirer.prompt([
         {
           type: "input",
           name: "apiUrl",
           message: "What is your apiUrl?",
-          default: config.apiUrl ,
+          default: config.apiUrl,
         },
         {
           type: "input",
           name: "authUser",
           message: "What is your authUser ?",
-          default: config.authUser ,
+          default: config.authUser,
         },
         {
           type: "input",
           name: "authPassword",
           message: "What is your authPassword ?",
-          default: config.authPassword 
+          default: config.authPassword,
+        },
+        {
+          type: "input",
+          name: "apiPostUrl",
+          message: "What is your wp-api of Post(ex.'posts') ?",
+          default: config.apiPostUrl ? config.apiPostUrl : "posts",
+        },
+        {
+          type: "input",
+          name: "apiMediaUrl",
+          message: "What is your wp-api of Media(ex.'media') ?",
+          default: config.apiMediaUrl ? config.apiMediaUrl : "media",
+        },
+        {
+          type: "confirm",
+          name: "useLinkCardHtmlGenerator",
+          message: "Automatically convert a-tags into link cards? ?",
+          default: config.useLinkCardHtmlGenerator,
         },
       ]);
 
@@ -138,17 +157,30 @@ program
 
       if (confirmation.confirm) {
         // Display the changes for confirmation
+        console.log(); //empty line
+
         console.log("Here are the changes you made:");
         console.log("apiUrl:", answers["apiUrl"]);
         console.log("authUser:", answers["authUser"]);
-        console.log("authPassword:", answers["authPassword"]);
+        console.log("apiPostUrl:", answers["apiPostUrl"]);
+        console.log("apiMediaUrl:", answers["apiMediaUrl"]);
+        console.log(
+          "automaticallyLinkCard:",
+          answers["useLinkCardHtmlGenerator"]
+        );
         // console.log(`authPassword: ${"*".repeat(answers.authPassword.length)}`);
 
         // Save the configuration to a file
-        config.apiUrl=answers["apiUrl"];
-        config.authUser=answers["authUser"];
-        config.authPassword=answers["authPassword"];
+        config.apiUrl = answers["apiUrl"];
+        config.authUser = answers["authUser"];
+        config.authPassword = answers["authPassword"];
+        config.apiPostUrl = answers["apiPostUrl"];
+        config.apiMediaUrl = answers["apiMediaUrl"];
+        config.useLinkCardHtmlGenerator = answers["useLinkCardHtmlGenerator"];
         await config.writeConfig();
+
+        console.log(); //empty line
+
         console.log(`Configuration saved to ${config.getSavePath()}`);
       } else {
         console.log("Configuration not saved.");
@@ -156,13 +188,12 @@ program
     }
   });
 
-
 export const checkAsync = async (docPath: string): Promise<string> => {
   //
   const checker = new WPPost(docPath);
   //
-  const files1 =await checker.getLinksAsync();
-  const files2 =await checker.getFileReferencesAsync();
+  const files1 = await checker.getLinksAsync();
+  const files2 = await checker.getFileReferencesAsync();
   //
   const exists1 = files1.filter((a) => a.exists).length;
   const noExists1 = files1.filter((a) => !a.exists).length;

@@ -59,9 +59,10 @@ Convert the markdown file to HTML and post it to WordPress.
 import { wppostAync } from "wp-post";
 
 const docPath = "./post01/post01.md";
-const apiUrl = config.apiUrl; // e.g https://example.com/wp-json/wp/v2
-const authUser = config.authUser;// e.g userName,mail
-const authPassword = config.authPassword;// e.g "xxxs xxxs xxxs xxxs xxxs xxxx"
+
+const apiUrl = "apiUrl"; // e.g https://example.com/wp-json/wp/v2
+const authUser = "authUser";// e.g userName,mail
+const authPassword = "authPassword";// e.g "xxxs xxxs xxxs xxxs xxxs xxxx"
 
 //
 const postId = await wppostAync(docPath, apiUrl, authUser, authPassword);
@@ -94,13 +95,22 @@ When using `wppostAync()`
 import WPPost from "wp-post";
 const wpost = new WPPost(docPath);
 
-//
-const html = wpost.render();
+// If you want to change the config.
+// Set up automatic conversion to a link card.
+wpost.getConfig().useLinkCardHtmlGenerator = true; // default: false
+
+// change APIUrl
+// https://example.com/wp-json/wp/v2/posts -> https://example.com/wp-json/wp/v2/myposts
+wpost.getConfig().apiPostUrl = "myposts"; // default: posts
+
+// https://example.com/wp-json/wp/v2/media -> https://example.com/wp-json/wp/v2/mymedia
+wpost.getConfig().apiMediaUrl = "mymedia";// default: media
+
 
 //
-const apiUrl = config.apiUrl;
-const authUser = config.authUser;
-const authPassword = config.authPassword;
+const apiUrl = "https://example.com/wp-json/wp/v2";
+const authUser = "userName or email";
+const authPassword = "xxxs xxxs xxxs xxxs xxxs xxxx";
 //
 const postId = await wpost.postAsync(apiUrl, authUser, authPassword);
 ```
@@ -386,11 +396,19 @@ Sets information interactively using Wordpress's REST API.
 ? What is your apiUrl? https://<apiUrl>
 ? What is your authUser ? authUser
 ? What is your authPassword ? xxx xxx xxx xxx xxx xxx
+? What is your wp-api of Post(ex.'posts') ? (posts)
+? What is your wp-api of Media(ex.'media') ? (media)
+? Automatically convert a-tags into link cards? ? (y/N)
+
 ? Do you want to save these changes? Yes
 Here are the changes you made:
 apiUrl: https://<apiUrl>
 authUser: authUser
 authPassword: xxx xxx xxx xxx xxx xxx
+apiPostUrl: posts
+apiMediaUrl: media
+automaticallyLinkCard: false
+
 Configuration saved to C:\Users\user\AppData\Roaming\.wppost\config.json
 ```
 After that, you will be able to post just by specifying the markdown file.
