@@ -13,13 +13,13 @@ export interface CodeOption {
   useLineNumbers: boolean;
 }
 
-export interface MarkdownOption {
+export interface RenderOption {
   useLineNumbers: boolean;
-  useLinkCard: boolean;
+  useLinkCardHtmlGenerator: boolean;
 }
 
 export class Template {
-  constructor(public start: string = "", public end: string = "") { }
+  constructor(public start: string = "", public end: string = "") {}
 
   // alias:renderStart for single string.
   public render(param: Record<string, any> = {}) {
@@ -328,26 +328,13 @@ export default class Markdown {
 
   public parentDir: string;
 
-  public useLineNumbers: boolean = true;
-  public useLinkCardHtmlGenerator: boolean = true;
-
   // template
   public template: MarkdownTemplate = new MarkdownTemplate();
 
   /**
    *
    */
-  constructor(public docPath: string, options?: MarkdownOption) {
-    //
-    if (options != null) {
-      if (options.useLineNumbers != null)
-        this.useLineNumbers = options.useLineNumbers;
-      if (options.useLinkCard != null)
-        this.useLinkCardHtmlGenerator = options.useLinkCard;
-      //
-      console.log("useLinkCard", this.useLinkCardHtmlGenerator);
-      console.log("useLineNumbers", this.useLineNumbers);
-    }
+  constructor(public docPath: string) {
     //
     this.md = this.setup();
     //
@@ -425,29 +412,37 @@ export default class Markdown {
     return this;
   }
 
-  public async renderAsync(): Promise<string> {
+  public async renderAsync(
+    options: RenderOption = {
+      useLineNumbers: true,
+      useLinkCardHtmlGenerator: false,
+    }
+  ): Promise<string> {
     const content = this.md.render(this.content);
 
     const ch = cheerio.load(content);
     //
     this.code(ch, {
-      useLineNumbers: this.useLineNumbers,
+      useLineNumbers: options.useLineNumbers,
     });
 
     //
-    if (this.useLinkCardHtmlGenerator) {
-      await this.linkCardAsync(ch);
+    if (options.useLinkCardHtmlGenerator) {
+      // Keep them going despite errors.
+      try {
+        await this.linkCardAsync(ch);
+      } catch (error: any) {
+        console.error(error);
+      }
     }
 
     return Markdown.Format(ch.html());
   }
 
-  public async outputAsync(filePath:string): Promise<void> {
+  public async outputAsync(filePath: string): Promise<void> {
     const text = await this.renderAsync();
     await fs.promises.writeFile(filePath, text);
-
   }
-
 
   public code(
     ch: cheerio.CheerioAPI,
@@ -500,7 +495,9 @@ export default class Markdown {
 
       const domain = new URL(url).origin;
 
-      //
+      // If one of any of the items cannot be retrieved, it will not be rendered.
+      if (!title || !image || !description) return;
+
       const template = this.template.linkCard.render({
         url: url,
         title: title,
@@ -513,8 +510,6 @@ export default class Markdown {
       ch(as[i]).replaceWith(template);
     }
   }
-
-
 
   public static Format(text: string): string {
     let content = prettier.format(text, {

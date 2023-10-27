@@ -1,5 +1,4 @@
-
-import  WPPost ,{MarkdownOption,Config,WPCheckResult} from "./WPPost";
+import WPPost, { Config, WPCheckResult } from "./WPPost";
 
 export default WPPost;
-export {MarkdownOption,Config,WPCheckResult}
+export { Config, WPCheckResult };
