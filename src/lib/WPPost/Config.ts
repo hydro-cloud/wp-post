@@ -4,9 +4,6 @@ import * as os from "os";
 
 import * as process from "process";
 
-import { MarkdownOption } from ".";
-
-
 
 export default class Config {
   
@@ -58,11 +55,14 @@ export default class Config {
   /** */
   public forceUploadImage: boolean = false;
 
-
-  public options: MarkdownOption = {
-    useLineNumbers: false,
-    useLinkCard: false,
-  };
+  /** */
+  public useLineNumbers: boolean = true;   
+  /** */
+  public useLinkCardHtmlGenerator: boolean = false;
+  /** */
+  public apiPostUrl: string = "posts";
+  /** */
+  public apiMediaUrl: string = "media";
 
   public getSavePath(): string {
     // FIXME: hardcode
@@ -94,7 +94,15 @@ export default class Config {
     return `wppost.${name}`;
   }
 
-  public async readConfig(
+  private getParamValue(parsed:any,key:string,defaultValue:any=null):any{
+    // 
+    try{
+      if (!(key in parsed))throw new Error(`key: [${key}] is not exists.`)
+      return parsed[this.getParamName(key)]
+    }catch(err:any){
+      return defaultValue;
+    }
+  }  public async readConfig(
     filePath: string | null = null
   ): Promise<Config> {
     try {
@@ -106,27 +114,31 @@ export default class Config {
       //
       const parsed = JSON.parse(data);
 
-      this.apiUrl = parsed[this.getParamName("apiUrl")];
-      this.authUser = parsed[this.getParamName("authUser")];
-      this.authPassword = parsed[this.getParamName("authPassword")];
-      this.slugKeys = parsed[this.getParamName("slugKeys")];
-      this.defaultFeaturedImageId = parsed[this.getParamName("defaultFeaturedImageId")];
-      this.prefixFeaturedImageSlug = parsed[this.getParamName("prefixFeaturedImageSlug")];
-      this.suffixFeaturedImageSlug = parsed[this.getParamName("suffixFeaturedImageSlug")];
-      this.slugSepalator = parsed[this.getParamName("slugSepalator")];
-      this.typeAttachedImageSlug = parsed[this.getParamName("typeAttachedImageSlug")];
-      this.mediaTypes = parsed[this.getParamName("mediaTypes")];
-      this.siteUrl = parsed[this.getParamName("siteUrl")];
-      this.addTitleAttribute = parsed[this.getParamName("addTitleAttribute")];
-      this.addSizeAttributes = parsed[this.getParamName("addSizeAttributes")];
-      this.resize = parsed[this.getParamName("resize")];
-      this.resizeJpegQuality = parsed[this.getParamName("resizeJpegQuality")];
-      this.resizeJpegUseMozjpeg = parsed[this.getParamName("resizeJpegUseMozjpeg")];
-      this.resizePngUsePalette = parsed[this.getParamName("resizePngUsePalette")];
-      this.imagemaxWidth = parsed[this.getParamName("imagemaxWidth")];
-      this.imagemaxHeight = parsed[this.getParamName("imagemaxHeight")];
-      this.useLinkableImage = parsed[this.getParamName("useLinkableImage")];
-      this.forceUploadImage = parsed[this.getParamName("forceUploadImage")];
+      this.apiUrl = this.getParamValue(parsed,"apiUrl",this.apiUrl);
+      this.authUser = this.getParamValue(parsed,"authUser",this.authUser);
+      this.authPassword = this.getParamValue(parsed,"authPassword",this.authPassword);
+      this.slugKeys = this.getParamValue(parsed,"slugKeys",this.slugKeys);
+      this.defaultFeaturedImageId = this.getParamValue(parsed,"defaultFeaturedImageId",this.defaultFeaturedImageId);
+      this.prefixFeaturedImageSlug = this.getParamValue(parsed,"prefixFeaturedImageSlug",this.prefixFeaturedImageSlug);
+      this.suffixFeaturedImageSlug = this.getParamValue(parsed,"suffixFeaturedImageSlug",this.suffixFeaturedImageSlug);
+      this.slugSepalator = this.getParamValue(parsed,"slugSepalator",this.slugSepalator);
+      this.typeAttachedImageSlug = this.getParamValue(parsed,"typeAttachedImageSlug",this.typeAttachedImageSlug);
+      this.mediaTypes = this.getParamValue(parsed,"mediaTypes",this.mediaTypes);
+      this.siteUrl = this.getParamValue(parsed,"siteUrl",this.siteUrl);
+      this.addTitleAttribute = this.getParamValue(parsed,"addTitleAttribute",this.addTitleAttribute);
+      this.addSizeAttributes = this.getParamValue(parsed,"addSizeAttributes",this.addSizeAttributes);
+      this.resize = this.getParamValue(parsed,"resize",this.resize);
+      this.resizeJpegQuality = this.getParamValue(parsed,"resizeJpegQuality",this.resizeJpegQuality);
+      this.resizeJpegUseMozjpeg = this.getParamValue(parsed,"resizeJpegUseMozjpeg",this.resizeJpegUseMozjpeg);
+      this.resizePngUsePalette = this.getParamValue(parsed,"resizePngUsePalette",this.resizePngUsePalette);
+      this.imagemaxWidth = this.getParamValue(parsed,"imagemaxWidth",this.imagemaxWidth);
+      this.imagemaxHeight = this.getParamValue(parsed,"imagemaxHeight",this.imagemaxHeight);
+      this.useLinkableImage = this.getParamValue(parsed,"useLinkableImage",this.useLinkableImage);
+      this.forceUploadImage = this.getParamValue(parsed,"forceUploadImage",this.forceUploadImage);
+      this.useLineNumbers = this.getParamValue(parsed,"useLineNumbers",this.useLineNumbers);
+      this.useLinkCardHtmlGenerator = this.getParamValue(parsed,"useLinkCardHtmlGenerator",this.useLinkCardHtmlGenerator);
+      this.apiPostUrl = this.getParamValue(parsed,"apiPostUrl",this.apiPostUrl);
+      this.apiMediaUrl = this.getParamValue(parsed,"apiMediaUrl",this.apiMediaUrl);
 
     } catch (error) {
       console.log("Configuration is not exists.");
@@ -159,6 +171,11 @@ export default class Config {
       data[this.getParamName("imagemaxHeight")] = this.imagemaxHeight;
       data[this.getParamName("useLinkableImage")] = this.useLinkableImage;
       data[this.getParamName("forceUploadImage")] = this.forceUploadImage;
+      data[this.getParamName("useLineNumbers")] = this.useLineNumbers;
+      data[this.getParamName("useLinkCardHtmlGenerator")] = this.useLinkCardHtmlGenerator;
+      data[this.getParamName("apiPostUrl")] = this.apiPostUrl;
+      data[this.getParamName("apiMediaUrl")] = this.apiMediaUrl;
+
 
       const str = JSON.stringify(data);
 

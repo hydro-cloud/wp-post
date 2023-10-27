@@ -118,6 +118,18 @@ describe("#renderAsync", () => {
   });
 });
 
+describe("#getConfig", () => {
+  test("default", async () => {
+    const wpost = new WPPost(sample);
+    const conf = wpost.getConfig();
+    expect(conf).not.toBeNull();
+    expect(conf.useLineNumbers).toBe(true);
+    expect(conf.useLinkCardHtmlGenerator).toBe(false);
+    expect(conf.apiPostUrl).toBe("posts");
+    expect(conf.apiMediaUrl).toBe("media");
+  });
+});
+
 
 
 describe("#checkPost", () => {

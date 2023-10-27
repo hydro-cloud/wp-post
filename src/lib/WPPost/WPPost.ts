@@ -12,8 +12,7 @@ import { EventEmitter } from "events";
 import Config from "./Config";
 export { Config };
 
-import Markdown, { MarkdownOption } from "./Markdown";
-export { MarkdownOption };
+import Markdown from "./Markdown";
 
 //
 class WPPostEvent extends EventEmitter {}
@@ -39,10 +38,15 @@ export default class WPPost extends Markdown {
   /** */
   private config: Config = new Config();
 
+  /** */
+  public getConfig(): Config {
+    return this.config;
+  }
+
   //
-  constructor(public override docPath: string, options?: MarkdownOption) {
+  constructor(public override docPath: string) {
     //
-    super(docPath, options);
+    super(docPath);
     //
     const docParsedPath = path.parse(docPath);
     //
@@ -83,7 +87,10 @@ export default class WPPost extends Markdown {
     this.events.emit("parsed", this.postData);
 
     // Render the content part of markdown with markdown-it
-    let content: string = await this.renderAsync();
+    let content: string = await this.renderAsync({
+      useLineNumbers: this.config.useLineNumbers,
+      useLinkCardHtmlGenerator: this.config.useLinkCardHtmlGenerator,
+    });
 
     //
     this.events.emit("rendered", { content: content });
@@ -113,7 +120,7 @@ export default class WPPost extends Markdown {
     // post
     // Make a request to the API to determine if the target slug has been uploaded
     const postItem = await this.getWpItemAsync(
-      "posts",
+      this.config.apiPostUrl,
       {
         slug: this.postData["slug"],
         status: "publish,future,draft,pending,private",
@@ -121,7 +128,7 @@ export default class WPPost extends Markdown {
       false
     );
     // The URL is different depending on whether it is new or overwritten. Form before POST from the obtained result
-    let postUrl = this.getUrl("posts");
+    let postUrl = this.getUrl(this.config.apiPostUrl);
     if (postItem) {
       postUrl = `${postUrl}/${postItem["id"]}/`;
     }
@@ -158,7 +165,10 @@ export default class WPPost extends Markdown {
     //
     const docParsedPath = path.parse(this.docPath);
     //
-    let content: string = await this.renderAsync();
+    let content: string = await this.renderAsync({
+      useLineNumbers: this.config.useLineNumbers,
+      useLinkCardHtmlGenerator: this.config.useLinkCardHtmlGenerator,
+    });
     //
     const localFeaturedImage = this.findLocalFeaturedImage(docParsedPath);
 
@@ -219,36 +229,30 @@ export default class WPPost extends Markdown {
 
     return files2;
   }
-
-  
-  
   public checkPost(): void {
     // header
-      // 1. null もしくは {} であるか？
-  if (!this.headerData || Object.keys(this.headerData).length === 0) {
-    throw new Error("invarid headerData.");
-  }
+    // 1. null もしくは {} であるか？
+    if (!this.headerData || Object.keys(this.headerData).length === 0) {
+      throw new Error("invarid headerData.");
+    }
 
-  // 2. キーに "status" というものがあるか？
-  if (!this.headerData.hasOwnProperty('status')) {
-    throw new Error("no status.");
-  }
+    // 2. キーに "status" というものがあるか？
+    if (!this.headerData.hasOwnProperty("status")) {
+      throw new Error("no status.");
+    }
 
-  // 3. このstatus のキーで値を取得した際に null やから文字列であるか？
-  const statusValue = this.headerData['status'];
-  if (statusValue === null || typeof statusValue !== 'string') {
-    throw new Error("invarid status.");
-  }
+    // 3. このstatus のキーで値を取得した際に null やから文字列であるか？
+    const statusValue = this.headerData["status"];
+    if (statusValue === null || typeof statusValue !== "string") {
+      throw new Error("invarid status.");
+    }
 
-  // コンテンツが無い
-    if (!this.content || !(this.content.trim())){
+    // コンテンツが無い
+    if (!this.content || !this.content.trim()) {
       throw new Error("no contents.");
-
     }
     //
-
   }
-
 
   /**
    * upload image to wordpess
@@ -264,14 +268,18 @@ export default class WPPost extends Markdown {
     const imageBin = fs.readFileSync(imgPath);
 
     //
-    const item = await this.getWpItemAsync("media", { slug: slug }, false);
+    const item = await this.getWpItemAsync(
+      this.config.apiMediaUrl,
+      { slug: slug },
+      false
+    );
 
     // exist?
     if (item) {
       // If it already exists, do you want to delete it and upload it again?
       if (!this.config.forceUploadImage) return item;
       // Delete media
-      let postUrl = this.getUrl("media");
+      let postUrl = this.getUrl(this.config.apiMediaUrl);
       postUrl = `${postUrl}/${item["id"]}?force=true`;
       await axios({
         url: postUrl,
@@ -287,7 +295,7 @@ export default class WPPost extends Markdown {
     };
 
     const res = await axios({
-      url: this.getUrl("media"),
+      url: this.getUrl(this.config.apiMediaUrl),
       method: `POST`,
       headers: headers,
       data: imageBin,
